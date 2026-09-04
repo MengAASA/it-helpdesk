@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="anonymous" />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<style>
+  html, body { margin: 0; padding: 0; background: #f7f7f5; }
+  * { box-sizing: border-box; }
+  a { color: #1e293b; text-decoration: none; }
+  a:hover { color: #0f766e; }
+  textarea:focus { outline: none; border-color: #0f766e; }
+  @keyframes phnPulse { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
+  @keyframes phnRise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+</style>
+</helmet>
+<div style="min-height: 100vh; display: flex; flex-direction: column; background: #f7f7f5; font-family: 'IBM Plex Sans', Helvetica, sans-serif; color: #1e293b;">
+
+  <header style="display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 22px 56px; background: #1e293b; color: #f7f7f5;">
+    <a href="#home" onClick="{{ goHome }}" style="display: flex; align-items: center; gap: 14px; color: #f7f7f5;">
+      <div style="width: 34px; height: 34px; border-radius: 8px; background: #0f766e; display: flex; align-items: center; justify-content: center; font-family: 'Space Grotesk', sans-serif; font-weight: 700; font-size: 15px; color: #f7f7f5;">P</div>
+      <div style="display: flex; flex-direction: column; gap: 2px;">
+        <span style="font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 16px; letter-spacing: 0.01em;">PHN Helpdesk</span>
+        <span style="font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: #94a3b8;">IT Support Portal</span>
+      </div>
+    </a>
+    <nav style="display: flex; align-items: center; gap: 30px;">
+      <a href="#submit" onClick="{{ goSubmit }}" style="color: #e2e8f0; font-size: 14px; font-weight: 500;" style-hover="color: #ffffff;">Submit a ticket</a>
+      <a href="#view" style="color: #e2e8f0; font-size: 14px; font-weight: 500;" style-hover="color: #ffffff;">View my tickets</a>
+      <a href="#login" style="display: inline-flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: #1e293b; background: #f7f7f5; padding: 9px 18px; border-radius: 6px; white-space: nowrap;" style-hover="background: #ffffff; color: #0f766e;">Administrator login</a>
+    </nav>
+  </header>
+
+  <sc-if value="{{ onHome }}" hint-placeholder-val="{{ true }}">
+  <main style="flex: 1; display: flex; flex-direction: column; gap: 64px; padding: 76px 56px 90px;">
+
+    <section style="display: flex; flex-direction: column; gap: 24px;">
+      <div style="display: flex; flex-direction: column; gap: 24px; max-width: 680px;">
+        <span style="display: inline-flex; align-items: center; gap: 10px; font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; color: #0f766e; font-weight: 600;">
+          <span style="width: 7px; height: 7px; border-radius: 50%; background: #0f766e;"></span>
+          Service desk online
+        </span>
+        <h1 style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 60px; line-height: 1.05; letter-spacing: -0.02em; text-wrap: pretty;">Report an IT issue.<br />Track it to resolution.</h1>
+        <p style="margin: 0; font-size: 18px; line-height: 1.6; color: #475569; max-width: 560px; text-wrap: pretty;">One place to raise hardware, software, network and account requests with the PHN IT Department, and to follow the status of everything you have already submitted.</p>
+      </div>
+    </section>
+
+    <section style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 26px;">
+      <a href="#submit" onClick="{{ goSubmit }}" style="display: flex; flex-direction: column; justify-content: space-between; gap: 44px; min-height: 260px; padding: 34px 36px; background: #1e293b; color: #f7f7f5; border-radius: 14px; border: 1px solid #1e293b;" style-hover="background: #16212f;">
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <span style="font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; color: #7dd3c8; font-weight: 600;">Step 1</span>
+          <h2 style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 30px; letter-spacing: -0.01em;">Submit a new ticket</h2>
+          <p style="margin: 0; font-size: 15px; line-height: 1.6; color: #cbd5e1; max-width: 380px;">Describe the problem in your own words. The assistant reads it and picks the right category for you.</p>
+        </div>
+        <span style="display: inline-flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 600; color: #f7f7f5;">Describe your issue <span style="font-size: 17px;">&#8594;</span></span>
+      </a>
+      <a href="#view" style="display: flex; flex-direction: column; justify-content: space-between; gap: 44px; min-height: 260px; padding: 34px 36px; background: #ffffff; color: #1e293b; border-radius: 14px; border: 1px solid #dcdcd6;" style-hover="border-color: #0f766e;">
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <span style="font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; color: #0f766e; font-weight: 600;">Step 2</span>
+          <h2 style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 30px; letter-spacing: -0.01em;">View existing tickets</h2>
+          <p style="margin: 0; font-size: 15px; line-height: 1.6; color: #475569; max-width: 380px;">Enter your ticket number or staff ID to check status, read technician replies and add more information.</p>
+        </div>
+        <span style="display: inline-flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 600; color: #0f766e;">Check a ticket <span style="font-size: 17px;">&#8594;</span></span>
+      </a>
+    </section>
+
+    <section style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 28px; padding: 26px 32px; background: #fef6ea; border: 1px solid #f0dcbe; border-radius: 14px;">
+      <div style="display: flex; flex-direction: column; gap: 6px; max-width: 620px;">
+        <span style="font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 18px;">Are you IT staff?</span>
+        <p style="margin: 0; font-size: 15px; line-height: 1.6; color: #6b5a3e;">Sign in to the administrator console to assign, escalate and close tickets, and to review queue reports.</p>
+      </div>
+      <a href="#login" style="display: inline-flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 600; color: #f7f7f5; background: #1e293b; padding: 13px 26px; border-radius: 8px; white-space: nowrap;" style-hover="background: #0f766e;">Administrator login <span style="font-size: 17px;">&#8594;</span></a>
+    </section>
+
+  </main>
+  </sc-if>
+
+  <sc-if value="{{ onSubmit }}" hint-placeholder-val="{{ false }}">
+  <main style="flex: 1; display: flex; flex-direction: column; gap: 40px; padding: 56px 56px 90px; max-width: 1040px; width: 100%; margin: 0 auto;">
+
+    <div style="display: flex; flex-direction: column; gap: 14px;">
+      <a href="#home" onClick="{{ goHome }}" style="font-size: 13px; font-weight: 500; color: #64748b;" style-hover="color: #0f766e;">&#8592; Back to home</a>
+      <h1 style="margin: 0; font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 40px; letter-spacing: -0.02em;">What can we help you with?</h1>
+      <p style="margin: 0; font-size: 17px; line-height: 1.6; color: #475569; max-width: 660px;">Write the problem in your own words. The assistant reads what you type and routes it to one of the 15 helpdesk categories, so you do not have to guess.</p>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 0; background: #ffffff; border: 1px solid #dcdcd6; border-radius: 14px; overflow: hidden;">
+      <div style="display: flex; flex-direction: column; gap: 12px; padding: 26px 28px 22px;">
+        <label for="issue" style="font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: #64748b; font-weight: 600;">Describe your issue</label>
+        <textarea id="issue" rows="4" value="{{ desc }}" onChange="{{ onDesc }}" placeholder="e.g. Baan gives an error when I try to release a purchase order, and it started this morning." style="width: 100%; resize: vertical; font-family: 'IBM Plex Sans', Helvetica, sans-serif; font-size: 16px; line-height: 1.6; color: #1e293b; background: #f7f7f5; border: 1px solid #dcdcd6; border-radius: 10px; padding: 14px 16px;"></textarea>
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px; font-size: 12px; color: #94a3b8;">
+          <span>{{ charHint }}</span>
+          <a href="#browse" onClick="{{ toggleBrowse }}" style="font-size: 12px; font-weight: 600; color: #0f766e;">{{ browseLabel }}</a>
+        </div>
+      </div>
+
+      <sc-if value="{{ analyzing }}" hint-placeholder-val="{{ false }}">
+        <div style="display: flex; align-items: center; gap: 12px; padding: 18px 28px; border-top: 1px solid #eceae3; background: #f2f7f6; font-size: 14px; color: #0f766e; font-weight: 500; animation: phnPulse 1.1s ease-in-out infinite;">
+          <span style="font-size: 15px;">&#10022;</span> Reading your description…
+        </div>
+      </sc-if>
+
+      <sc-if value="{{ hasResult }}" hint-placeholder-val="{{ false }}">
+        <div style="display: flex; flex-direction: column; gap: 20px; padding: 24px 28px 28px; border-top: 1px solid #eceae3; background: #f2f7f6; animation: phnRise 0.35s ease-out;">
+          <div style="display: flex; align-items: center; justify-content: space-between; gap: 16px;">
+            <span style="display: inline-flex; align-items: center; gap: 9px; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: #0f766e; font-weight: 600;"><span style="font-size: 14px;">&#10022;</span> Suggested category</span>
+            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #64748b;">{{ topConfidence }} match</span>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 12px; padding: 22px 24px; background: #ffffff; border: 1px solid #bfd8d4; border-radius: 12px;">
+            <span style="font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 24px; letter-spacing: -0.01em;">{{ topName }}</span>
+            <p style="margin: 0; font-size: 14px; line-height: 1.6; color: #475569;">{{ topReason }}</p>
+            <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: 4px;">
+              <span style="font-size: 12px; color: #64748b;">Suggested priority</span>
+              <span style="font-size: 12px; font-weight: 600; padding: 5px 11px; border-radius: 999px; background: #fef6ea; border: 1px solid #f0dcbe; color: #7a6432;">{{ priority }}</span>
+              <span style="font-size: 12px; color: #64748b;">Routed to</span>
+              <span style="font-size: 12px; font-weight: 600; padding: 5px 11px; border-radius: 999px; background: #eef2f6; border: 1px solid #dbe2ea; color: #334155;">{{ team }}</span>
+            </div>
+          </div>
+
+          <div style="display: flex; flex-direction: column; gap: 10px;">
+            <span style="font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; color: #64748b; font-weight: 600;">Or one of these</span>
+            <div style="display: flex; flex-wrap: wrap; gap: 10px;">
+              <sc-for list="{{ alternates }}" as="alt" hint-placeholder-count="2">
+                <a href="#pick" onClick="{{ alt.pick }}" style="display: inline-flex; align-items: center; gap: 10px; font-size: 13px; font-weight: 500; color: #1e293b; background: #ffffff; border: 1px solid #dcdcd6; border-radius: 999px; padding: 8px 15px;" style-hover="border-color: #0f766e; color: #0f766e;">{{ alt.name }} <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #94a3b8;">{{ alt.score }}</span></a>
+              </sc-for>
+            </div>
+          </div>
+
+          <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 14px; padding-top: 6px;">
+            <a href="#continue" style="display: inline-flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 600; color: #f7f7f5; background: #1e293b; padding: 13px 26px; border-radius: 8px; white-space: nowrap;" style-hover="background: #0f766e;">Continue with this category <span style="font-size: 17px;">&#8594;</span></a>
+            <a href="#browse" onClick="{{ toggleBrowse }}" style="font-size: 13px; font-weight: 600; color: #0f766e;">Not right? Choose it myself</a>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+
+    <sc-if value="{{ browsing }}" hint-placeholder-val="{{ false }}">
+      <div style="display: flex; flex-direction: column; gap: 14px;">
+        <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 16px;">
+          <span style="font-family: 'Space Grotesk', sans-serif; font-weight: 600; font-size: 20px;">All categories</span>
+          <span style="font-size: 13px; color: #94a3b8;">15 categories</span>
+        </div>
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px;">
+          <sc-for list="{{ allCategories }}" as="cat" hint-placeholder-count="8">
+            <a href="#pick" onClick="{{ cat.pick }}" style="display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 15px 18px; background: #ffffff; border: 1px solid #dcdcd6; border-radius: 10px; font-size: 15px; font-weight: 500; color: #1e293b;" style-hover="border-color: #0f766e; color: #0f766e;">
+              {{ cat.name }}
+              <span style="font-size: 15px; color: #94a3b8;">&#8250;</span>
+            </a>
+          </sc-for>
+        </div>
+      </div>
+    </sc-if>
+
+  </main>
+  </sc-if>
+
+  <footer style="display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 20px; padding: 28px 56px; background: #1e293b; color: #94a3b8; font-size: 13px;">
+    <span>This system is developed by <strong style="color: #f7f7f5; font-weight: 600;">PHN IT Department</strong>.</span>
+    <div style="display: flex; align-items: center; gap: 26px;">
+      <a href="#submit" onClick="{{ goSubmit }}" style="color: #94a3b8;" style-hover="color: #f7f7f5;">Submit a ticket</a>
+      <a href="#view" style="color: #94a3b8;" style-hover="color: #f7f7f5;">View my tickets</a>
+      <a href="#login" style="color: #94a3b8;" style-hover="color: #f7f7f5;">Administrator login</a>
+    </div>
+  </footer>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script>
+const CATEGORIES = [
+  { name: "Application - Baan", team: "Application team", keys: ["baan", "erp", "purchase order", "po", "mrp", "bom", "invoice", "gl", "stock module"] },
+  { name: "Application - Barcode", team: "Application team", keys: ["barcode", "label", "scanner", "scan", "zebra", "sticker", "print label"] },
+  { name: "Application - Portal / Prove / system", team: "Application team", keys: ["portal", "prove", "intranet", "web system", "dashboard"] },
+  { name: "Application - e-kiosk & Boss.net", team: "Application team", keys: ["kiosk", "e-kiosk", "boss.net", "bossnet", "payslip", "punch", "attendance", "leave"] },
+  { name: "Application - Others", team: "Application team", keys: ["application", "app", "system error", "software error"] },
+  { name: "Admin - Network", team: "Infrastructure", keys: ["network", "internet", "wifi", "wi-fi", "vpn", "lan", "cable point", "ip address", "slow connection", "no connection"] },
+  { name: "Admin - Email", team: "Infrastructure", keys: ["email", "e-mail", "outlook", "mailbox", "spam", "smtp", "mail"] },
+  { name: "Admin - Software", team: "Desktop support", keys: ["install", "installation", "license", "excel", "word", "office", "antivirus", "driver", "update"] },
+  { name: "Admin - Hardware", team: "Desktop support", keys: ["laptop", "pc", "desktop", "printer", "monitor", "screen", "keyboard", "mouse", "battery", "toner", "not turning on", "broken"] },
+  { name: "Admin - Service", team: "Desktop support", keys: ["service", "maintenance", "setup", "relocate", "move", "shift", "configure"] },
+  { name: "Admin - Item Request", team: "Asset & procurement", keys: ["request item", "new laptop", "new printer", "purchase", "adapter", "cable", "dock", "need a", "provide"] },
+  { name: "Admin - Server", team: "Infrastructure", keys: ["server", "shared folder", "share folder", "file server", "backup", "downtime", "database"] },
+  { name: "User Request", team: "IT security", keys: ["new user", "create account", "new account", "access", "rights", "permission", "new staff", "onboard"] },
+  { name: "User Revocation", team: "IT security", keys: ["resign", "resigned", "disable account", "revoke", "remove access", "terminate", "leaving"] },
+  { name: "User Transfer", team: "IT security", keys: ["transfer", "change department", "move to department", "new position", "promotion"] }
+];
+
+const URGENT = ["urgent", "asap", "production", "line stop", "cannot work", "whole department", "down", "immediately", "critical"];
+
+class Component extends DCLogic {
+  state = { screen: "home", desc: "", analyzing: false, browsing: false, chosen: null };
+
+  score(text) {
+    const t = text.toLowerCase();
+    return CATEGORIES.map(c => {
+      let hits = [];
+      c.keys.forEach(k => { if (t.includes(k)) hits.push(k); });
+      return { name: c.name, team: c.team, raw: hits.length ? hits.length + Math.max(...hits.map(h => h.length)) / 40 : 0, hits };
+    }).sort((a, b) => b.raw - a.raw);
+  }
+
+  setDesc = (v) => {
+    this.setState({ desc: v, analyzing: v.trim().length >= 12, chosen: null });
+    clearTimeout(this._t);
+    if (v.trim().length >= 12) this._t = setTimeout(() => this.setState({ analyzing: false }), 750);
+  };
+
+  renderVals() {
+    const desc = this.state.desc;
+    const ranked = this.score(desc);
+    const top = this.state.chosen
+      ? (ranked.find(r => r.name === this.state.chosen) || { name: this.state.chosen, team: "IT Department", hits: [], raw: 1 })
+      : ranked[0];
+    const ready = desc.trim().length >= 12 && !this.state.analyzing;
+    const scored = ranked[0].raw > 0;
+    const conf = scored ? Math.min(96, 58 + Math.round(ranked[0].raw * 12)) : 42;
+    const t = desc.toLowerCase();
+    const urgent = URGENT.some(k => t.includes(k));
+
+    const reason = !scored
+      ? "No strong keyword match yet. Add the system or device name (Baan, Outlook, printer, VPN) and the assistant will narrow it down."
+      : "Matched on " + top.hits.slice(0, 3).map(h => '"' + h + '"').join(", ") + " in your description.";
+
+    return {
+      onHome: this.state.screen === "home",
+      onSubmit: this.state.screen === "submit",
+      goHome: (e) => { e.preventDefault(); this.setState({ screen: "home" }); },
+      goSubmit: (e) => { e.preventDefault(); this.setState({ screen: "submit" }); },
+      desc,
+      onDesc: (e) => this.setDesc(e.target.value),
+      charHint: desc.trim().length < 12 ? "Type at least a sentence — the more detail, the better the routing." : desc.trim().split(/\s+/).length + " words read",
+      analyzing: this.state.analyzing,
+      hasResult: ready,
+      topName: top.name,
+      topReason: this.state.chosen ? "You selected this category manually." : reason,
+      topConfidence: conf + "%",
+      priority: urgent ? "High — work is blocked" : "Normal",
+      team: top.team,
+      alternates: ranked.slice(1, 4).map(r => ({
+        name: r.name,
+        score: (r.raw > 0 ? Math.min(90, 30 + Math.round(r.raw * 12)) : 20) + "%",
+        pick: (e) => { e.preventDefault(); this.setState({ chosen: r.name, browsing: false }); }
+      })),
+      browsing: this.state.browsing,
+      browseLabel: this.state.browsing ? "Hide the full category list" : "Prefer to pick the category yourself?",
+      toggleBrowse: (e) => { e.preventDefault(); this.setState({ browsing: !this.state.browsing }); },
+      allCategories: CATEGORIES.map(c => ({
+        name: c.name,
+        pick: (e) => { e.preventDefault(); this.setState({ chosen: c.name, browsing: false, screen: "submit" }); }
+      }))
+    };
+  }
+}
+</script>
+</body>
+</html>
