@@ -14,7 +14,7 @@ export const metadata: Metadata = {
 
 export default async function AdminUsers() {
   const session = await getIamsSession();
-  const permissions = session ? await getPermissionsFor(session.staffId) : null;
+  const permissions = session ? await getPermissionsFor(session.staffId, session.role) : null;
   if (!permissions?.manageUsers) {
     return (
       <div className="flex flex-col gap-[18px]">
@@ -62,7 +62,7 @@ export default async function AdminUsers() {
   await Promise.all(
     users.map(async (u) => {
       if (!u.staffId) return;
-      const p = await getPermissionsFor(u.staffId);
+      const p = await getPermissionsFor(u.staffId, u.role);
       teamByStaffId.set(u.staffId, p.team);
     })
   );

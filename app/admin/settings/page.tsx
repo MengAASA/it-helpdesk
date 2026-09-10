@@ -4,10 +4,12 @@ import { getPermissionsFor } from "@/app/lib/permissions";
 import { getEmailSettings } from "@/app/lib/emailSettings";
 import { getSlaHours } from "@/app/lib/slaSettings";
 import { getCannedResponses } from "@/app/lib/cannedResponsesServer";
+import { getAllEmailTemplates } from "@/app/lib/emailTemplates";
 import RestrictedMessage from "@/app/components/RestrictedMessage";
 import EmailSettingsForm from "./EmailSettingsForm";
 import SlaSettingsForm from "./SlaSettingsForm";
 import CannedResponsesManager from "./CannedResponsesManager";
+import EmailTemplatesManager from "./EmailTemplatesManager";
 import SettingsTabs from "./SettingsTabs";
 
 export const metadata: Metadata = {
@@ -16,9 +18,13 @@ export const metadata: Metadata = {
 
 export default async function AdminSettings() {
   const session = await getIamsSession();
-  const permissions = session ? await getPermissionsFor(session.staffId) : null;
+  const permissions = session ? await getPermissionsFor(session.staffId, session.role) : null;
 
-  if (!permissions?.manageUsers) {
+  const canEmail = permissions?.manageEmailSettings ?? false;
+  const canSla = permissions?.manageSla ?? false;
+  const canTemplates = permissions?.manageTemplates ?? false;
+
+  if (!canEmail && !canSla && !canTemplates) {
     return (
       <div className="flex flex-col gap-[18px]">
         <h1 className="font-heading text-[21px] font-semibold tracking-[-0.02em]">Settings</h1>
@@ -27,10 +33,11 @@ export default async function AdminSettings() {
     );
   }
 
-  const [settings, slaHours, cannedResponses] = await Promise.all([
-    getEmailSettings(),
-    getSlaHours(),
-    getCannedResponses(),
+  const [settings, slaHours, cannedResponses, emailTemplates] = await Promise.all([
+    canEmail ? getEmailSettings() : Promise.resolve(null),
+    canSla ? getSlaHours() : Promise.resolve(null),
+    canTemplates ? getCannedResponses() : Promise.resolve(null),
+    canTemplates ? getAllEmailTemplates() : Promise.resolve(null),
   ]);
 
   return (
@@ -41,9 +48,14 @@ export default async function AdminSettings() {
       </div>
 
       <SettingsTabs
-        email={<EmailSettingsForm initialSettings={{ ...settings, password: "" }} hasPassword={!!settings.password} />}
-        sla={<SlaSettingsForm initialHours={slaHours} />}
-        templates={<CannedResponsesManager initialResponses={cannedResponses} />}
+        email={
+          settings && (
+            <EmailSettingsForm initialSettings={{ ...settings, password: "" }} hasPassword={!!settings.password} />
+          )
+        }
+        sla={slaHours && <SlaSettingsForm initialHours={slaHours} />}
+        templates={cannedResponses && <CannedResponsesManager initialResponses={cannedResponses} />}
+        emailTemplates={emailTemplates && <EmailTemplatesManager initialTemplates={emailTemplates} />}
       />
     </div>
   );

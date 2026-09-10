@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, Ticket, BarChart3, ShieldCheck, Users2 } from "lucide-react";
+import { Check, Ticket, BarChart3, ShieldCheck, Users2, Tags, Mail, TimerReset, FileText, History } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { TEAMS } from "@/app/lib/teams";
 import ConfirmDialog from "@/app/components/ConfirmDialog";
@@ -12,11 +12,24 @@ type Permissions = {
   manageTickets: boolean;
   viewReports: boolean;
   manageUsers: boolean;
+  manageCategories: boolean;
+  manageEmailSettings: boolean;
+  manageSla: boolean;
+  manageTemplates: boolean;
+  viewActivity: boolean;
   team: string | null;
 };
 
 const TOGGLES: {
-  key: "manageTickets" | "viewReports" | "manageUsers";
+  key:
+    | "manageTickets"
+    | "viewReports"
+    | "manageUsers"
+    | "manageCategories"
+    | "manageEmailSettings"
+    | "manageSla"
+    | "manageTemplates"
+    | "viewActivity";
   label: string;
   description: string;
   icon: LucideIcon;
@@ -38,6 +51,36 @@ const TOGGLES: {
     label: "Manage users",
     description: "Access the Users tab and edit other people's permissions here.",
     icon: ShieldCheck,
+  },
+  {
+    key: "manageCategories",
+    label: "Manage categories",
+    description: "Add, edit, or remove ticket categories and their team routing.",
+    icon: Tags,
+  },
+  {
+    key: "manageEmailSettings",
+    label: "Change email settings",
+    description: "Edit outgoing SMTP configuration used for ticket notifications.",
+    icon: Mail,
+  },
+  {
+    key: "manageSla",
+    label: "Change SLA",
+    description: "Edit the SLA response-time targets used for overdue tracking.",
+    icon: TimerReset,
+  },
+  {
+    key: "manageTemplates",
+    label: "Manage templates",
+    description: "Add, edit, or remove canned response templates.",
+    icon: FileText,
+  },
+  {
+    key: "viewActivity",
+    label: "View activity",
+    description: "Access the Activity tab showing status, priority, and assignment changes across all tickets.",
+    icon: History,
   },
 ];
 
@@ -75,7 +118,7 @@ export default function PermissionsForm({
   }
   const isRevoking = TOGGLES.some((t) => initialPermissions[t.key] && !permissions[t.key]);
 
-  function toggle(key: "manageTickets" | "viewReports" | "manageUsers") {
+  function toggle(key: (typeof TOGGLES)[number]["key"]) {
     if (isSelf && key === "manageUsers" && permissions.manageUsers) {
       setError("You can't remove your own ability to manage users.");
       return;

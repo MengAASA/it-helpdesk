@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getIamsSession } from "@/app/lib/iamsSession";
 import { getPermissionsFor } from "@/app/lib/permissions";
 import { getEmailSettings, setEmailSettings } from "@/app/lib/emailSettings";
+import { logEmailSettingsChange } from "@/app/lib/settingsAudit";
 
 export async function PATCH(req: Request) {
   const session = await getIamsSession();
@@ -9,8 +10,8 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const permissions = await getPermissionsFor(session.staffId);
-  if (!permissions.manageUsers) {
+  const permissions = await getPermissionsFor(session.staffId, session.role);
+  if (!permissions.manageEmailSettings) {
     return NextResponse.json({ error: "You don't have permission to manage settings" }, { status: 403 });
   }
 
@@ -26,6 +27,7 @@ export async function PATCH(req: Request) {
     typeof body.notifyAssigned !== "boolean" ||
     typeof body.notifyStatusChanged !== "boolean" ||
     typeof body.notifyNewReply !== "boolean" ||
+    typeof body.notifySlaBreach !== "boolean" ||
     (body.port !== null && typeof body.port !== "number")
   ) {
     return NextResponse.json({ error: "Invalid settings payload" }, { status: 400 });
@@ -35,22 +37,29 @@ export async function PATCH(req: Request) {
   const password =
     typeof body.password === "string" && body.password.trim() ? body.password.trim() : current.password;
 
-  await setEmailSettings(
-    {
-      enabled: body.enabled,
-      host: body.host.trim(),
-      port: body.port,
-      secure: body.secure,
-      username: body.username.trim(),
-      password,
-      fromName: body.fromName.trim(),
-      fromEmail: body.fromEmail.trim(),
-      notifyAssigned: body.notifyAssigned,
-      notifyStatusChanged: body.notifyStatusChanged,
-      notifyNewReply: body.notifyNewReply,
-    },
-    session.email
-  );
+  const after = {
+    enabled: body.enabled,
+    host: body.host.trim(),
+    port: body.port,
+    secure: body.secure,
+    username: body.username.trim(),
+    password,
+    fromName: body.fromName.trim(),
+    fromEmail: body.fromEmail.trim(),
+    notifyAssigned: body.notifyAssigned,
+    notifyStatusChanged: body.notifyStatusChanged,
+    notifyNewReply: body.notifyNewReply,
+    notifySlaBreach: body.notifySlaBreach,
+  };
+
+  await setEmailSettings(after, session.email);
+
+  await logEmailSettingsChange({
+    before: current,
+    after,
+    actorName: session.name,
+    actorEmail: session.email,
+  });
 
   return NextResponse.json({ ok: true });
 }

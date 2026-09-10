@@ -307,7 +307,7 @@ export default function CannedResponsesManager({
           ))}
         </AnimatePresence>
         {responses.length === 0 && (
-          <p className="text-[10.5px] text-faint">No templates yet — add one above to get started.</p>
+          <p className="text-[10.5px] text-faint">No templates yet. Add one above to get started.</p>
         )}
       </div>
 

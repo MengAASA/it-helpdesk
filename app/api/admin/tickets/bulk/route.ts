@@ -5,12 +5,13 @@ import { getPermissionsFor, getCachedEmailByName } from "@/app/lib/permissions";
 import { notifyStatusChanged, notifyTicketAssigned } from "@/app/lib/notifications";
 
 const ALLOWED_STATUSES = ["Open", "In Progress", "Closed"];
+const ALLOWED_PRIORITIES = ["Low", "Normal", "High"];
 const MAX_BULK_SIZE = 100;
 
 type BulkEvent = {
   ticketId: number;
   ticketNumber: string;
-  type: "status" | "assignment";
+  type: "status" | "assignment" | "priority";
   from: string | null;
   to: string | null;
   subject: string;
@@ -24,7 +25,7 @@ export async function PATCH(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const permissions = await getPermissionsFor(session.staffId);
+  const permissions = await getPermissionsFor(session.staffId, session.role);
   if (!permissions.manageTickets) {
     return NextResponse.json({ error: "You don't have permission to manage tickets" }, { status: 403 });
   }
@@ -45,7 +46,7 @@ export async function PATCH(req: Request) {
     );
   }
 
-  const data: { status?: string; assigned_to?: string | null } = {};
+  const data: { status?: string; assigned_to?: string | null; priority?: string } = {};
 
   if (typeof body.status === "string") {
     if (!ALLOWED_STATUSES.includes(body.status)) {
@@ -58,13 +59,29 @@ export async function PATCH(req: Request) {
     data.assigned_to = body.assignedTo.trim() || null;
   }
 
+  if (typeof body.priority === "string") {
+    if (!ALLOWED_PRIORITIES.includes(body.priority)) {
+      return NextResponse.json({ error: "Invalid priority" }, { status: 400 });
+    }
+    data.priority = body.priority;
+  }
+
   if (Object.keys(data).length === 0) {
     return NextResponse.json({ error: "Nothing to update" }, { status: 400 });
   }
 
   const existingRows = await prisma.tickets.findMany({
     where: { ticket_number: { in: ticketNumbers } },
-    select: { id: true, ticket_number: true, status: true, assigned_to: true, name: true, email: true, subject: true },
+    select: {
+      id: true,
+      ticket_number: true,
+      status: true,
+      assigned_to: true,
+      priority: true,
+      name: true,
+      email: true,
+      subject: true,
+    },
   });
 
   const foundNumbers = new Set(existingRows.map((r) => r.ticket_number));
@@ -107,6 +124,18 @@ export async function PATCH(req: Request) {
           name: row.name,
         });
       }
+    }
+    if (typeof body.priority === "string" && body.priority !== row.priority) {
+      events.push({
+        ticketId: row.id,
+        ticketNumber: row.ticket_number,
+        type: "priority",
+        from: row.priority,
+        to: body.priority,
+        subject: row.subject,
+        email: row.email,
+        name: row.name,
+      });
     }
   }
 

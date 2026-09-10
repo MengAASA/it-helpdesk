@@ -46,9 +46,6 @@ export async function POST(req: Request) {
   const userRequestTypes = form.getAll("userRequestTypes").filter(
     (v): v is string => typeof v === "string"
   );
-  if (userRequestTypes.length === 0) {
-    return NextResponse.json({ error: "Missing field: userRequestTypes" }, { status: 400 });
-  }
 
   const categories = await getCategories();
   const category = categories.find((c) => c.name === values.category);

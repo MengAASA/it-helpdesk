@@ -242,7 +242,7 @@ export default function CategoriesManager({
           );
         })}
         {categories.length === 0 && (
-          <p className="text-[10.5px] text-faint">No categories yet — add one above to get started.</p>
+          <p className="text-[10.5px] text-faint">No categories yet. Add one above to get started.</p>
         )}
       </div>
 

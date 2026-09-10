@@ -11,8 +11,8 @@ export const metadata: Metadata = {
 
 export default async function AdminCategories() {
   const session = await getIamsSession();
-  const permissions = session ? await getPermissionsFor(session.staffId) : null;
-  if (!permissions?.manageUsers) {
+  const permissions = session ? await getPermissionsFor(session.staffId, session.role) : null;
+  if (!permissions?.manageCategories) {
     return (
       <div className="flex flex-col gap-[18px]">
         <h1 className="font-heading text-[21px] font-semibold tracking-[-0.02em]">Categories</h1>

@@ -10,7 +10,7 @@ export default function PresenceHeartbeat() {
 
     function sendHeartbeat() {
       fetch(`${basePath}/api/presence/heartbeat`, { method: "POST" }).catch(() => {
-        // Transient network hiccup — the next heartbeat will retry.
+        // Transient network hiccup, the next heartbeat will retry.
       });
     }
 

@@ -21,7 +21,7 @@ export default function OnlineUsersBar({ initialUsers }: { initialUsers: OnlineU
         const data = await res.json();
         if (!cancelled && Array.isArray(data.users)) setUsers(data.users);
       } catch {
-        // Transient network hiccup — keep showing the last known list.
+        // Transient network hiccup, keep showing the last known list.
       }
     }
 

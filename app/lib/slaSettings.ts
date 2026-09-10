@@ -4,11 +4,12 @@ import { DEFAULT_SLA_HOURS, type SlaHours } from "@/app/lib/sla";
 export async function getSlaHours(): Promise<SlaHours> {
   const row = await prisma.sla_settings.findUnique({ where: { id: 1 } });
   if (!row) return { ...DEFAULT_SLA_HOURS };
-  return { Low: row.low_hours, Normal: row.normal_hours, High: row.high_hours };
+  return { Low: row.low_hours, Normal: row.normal_hours, High: row.high_hours, enabled: row.enabled };
 }
 
 export async function setSlaHours(hours: SlaHours, updatedBy: string): Promise<void> {
   const data = {
+    enabled: hours.enabled,
     low_hours: hours.Low,
     normal_hours: hours.Normal,
     high_hours: hours.High,

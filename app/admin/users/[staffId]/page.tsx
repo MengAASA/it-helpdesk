@@ -31,7 +31,7 @@ export default async function UserPermissionsPage({
   const user = result.users.find((u) => u.staffId?.toLowerCase() === staffId.toLowerCase());
   if (!user) notFound();
 
-  const actorPermissions = await getPermissionsFor(session.staffId);
+  const actorPermissions = await getPermissionsFor(session.staffId, session.role);
 
   if (!actorPermissions.manageUsers) {
     return (
@@ -42,7 +42,7 @@ export default async function UserPermissionsPage({
     );
   }
 
-  const targetPermissions = await getPermissionsFor(user.staffId ?? staffId);
+  const targetPermissions = await getPermissionsFor(user.staffId ?? staffId, user.role);
   const isSelf = session.staffId.toLowerCase() === staffId.toLowerCase();
 
   return (

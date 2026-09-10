@@ -15,7 +15,7 @@ export async function PATCH(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const permissions = await getPermissionsFor(session.staffId);
+  const permissions = await getPermissionsFor(session.staffId, session.role);
   if (!permissions.manageTickets) {
     return NextResponse.json({ error: "You don't have permission to manage tickets" }, { status: 403 });
   }

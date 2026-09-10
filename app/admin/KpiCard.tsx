@@ -7,6 +7,7 @@ const TONE_STYLES = {
   violet: { bg: "bg-[color:var(--color-violet-light)]", border: "border-[color:var(--color-violet)]/25", icon: "bg-[color:var(--color-violet)] text-paper", text: "text-[color:var(--color-violet-text)]" },
   emerald: { bg: "bg-[color:var(--color-emerald-light)]", border: "border-[color:var(--color-emerald)]/25", icon: "bg-[color:var(--color-emerald)] text-paper", text: "text-[color:var(--color-emerald-text)]" },
   amber: { bg: "bg-amber-bg", border: "border-amber-border", icon: "bg-[color:var(--color-amber-solid)] text-paper", text: "text-amber-text-strong" },
+  teal: { bg: "bg-[color:var(--color-teal-light)]", border: "border-[color:var(--color-teal)]/25", icon: "bg-[color:var(--color-teal)] text-paper", text: "text-[color:var(--color-teal-text)]" },
 } as const;
 
 export type KpiTone = keyof typeof TONE_STYLES;

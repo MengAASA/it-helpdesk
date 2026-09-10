@@ -12,7 +12,7 @@ export async function PATCH(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const actorPermissions = await getPermissionsFor(session.staffId);
+  const actorPermissions = await getPermissionsFor(session.staffId, session.role);
   if (!actorPermissions.manageUsers) {
     return NextResponse.json({ error: "You don't have permission to manage users" }, { status: 403 });
   }

@@ -51,6 +51,10 @@
 
   --color-amber-solid: #d97706;
 
+  --color-teal: #0d9488;
+  --color-teal-light: #ccfbf1;
+  --color-teal-text: #0f766e;
+
   --font-heading: var(--font-space-grotesk);
   --font-body: var(--font-ibm-plex-sans);
   --font-mono-plex: var(--font-ibm-plex-mono);

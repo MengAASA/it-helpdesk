@@ -13,8 +13,8 @@ export async function PATCH(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const permissions = await getPermissionsFor(session.staffId);
-  if (!permissions.manageUsers) {
+  const permissions = await getPermissionsFor(session.staffId, session.role);
+  if (!permissions.manageTemplates) {
     return NextResponse.json({ error: "You don't have permission to manage templates" }, { status: 403 });
   }
 
@@ -70,8 +70,8 @@ export async function DELETE(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const permissions = await getPermissionsFor(session.staffId);
-  if (!permissions.manageUsers) {
+  const permissions = await getPermissionsFor(session.staffId, session.role);
+  if (!permissions.manageTemplates) {
     return NextResponse.json({ error: "You don't have permission to manage templates" }, { status: 403 });
   }
 

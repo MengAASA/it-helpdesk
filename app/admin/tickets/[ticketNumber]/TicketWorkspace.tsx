@@ -30,6 +30,7 @@ import {
 import Avatar from "@/app/components/Avatar";
 import AssigneeLookup, { type AssigneeOption } from "./AssigneeLookup";
 import type { CannedResponse } from "@/app/lib/cannedResponses";
+import { describeEvent } from "@/app/lib/ticketEvents";
 
 const STATUSES = ["Open", "In Progress", "Closed"] as const;
 
@@ -66,21 +67,6 @@ type TicketEvent = {
   actorName: string;
   createdAt: string;
 };
-
-function describeEvent(e: TicketEvent): string {
-  if (e.eventType === "status") {
-    return `changed status from ${e.fromValue ?? "—"} to ${e.toValue ?? "—"}`;
-  }
-  if (e.eventType === "assignment") {
-    if (!e.fromValue) return `assigned ticket to ${e.toValue}`;
-    if (!e.toValue) return `unassigned ticket (was ${e.fromValue})`;
-    return `reassigned ticket from ${e.fromValue} to ${e.toValue}`;
-  }
-  if (e.eventType === "feedback") {
-    return e.toValue === "up" ? "marked this ticket as resolved 👍" : "marked this ticket as not resolved 👎";
-  }
-  return e.eventType;
-}
 
 type Attachment = { id: number; filename: string; size: number };
 

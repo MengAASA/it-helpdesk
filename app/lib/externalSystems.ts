@@ -9,7 +9,7 @@ export function getExternalSystems(): ExternalSystem[] {
     {
       name: "IAMS",
       description:
-        "IT Asset Management System — manage assets, licenses, and expense records.",
+        "IT Asset Management System: manage assets, licenses, and expense records.",
       url: process.env.IAMS_BASE_URL ?? null,
     },
   ];

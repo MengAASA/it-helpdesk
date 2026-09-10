@@ -1,36 +1,44 @@
 import Link from "next/link";
-import { LayoutGrid, Users, Tags, BarChart3, Settings, AppWindow } from "lucide-react";
+import { LayoutGrid, Users, Tags, BarChart3, Settings, AppWindow, History } from "lucide-react";
 
-const TABS = [
+type Requirement = "viewReports" | "manageUsers" | "manageCategories" | "settings" | "viewActivity" | null;
+
+const TABS: { href: string; label: string; icon: typeof LayoutGrid; requires: Requirement }[] = [
   {
     href: "/admin",
     label: "Home",
     icon: LayoutGrid,
-    requires: null as "viewReports" | "manageUsers" | null,
+    requires: null,
   },
   {
     href: "/admin/users",
     label: "Users",
     icon: Users,
-    requires: "manageUsers" as const,
+    requires: "manageUsers",
   },
   {
     href: "/admin/categories",
     label: "Categories",
     icon: Tags,
-    requires: null,
+    requires: "manageCategories",
   },
   {
     href: "/admin/reports",
     label: "Reports",
     icon: BarChart3,
-    requires: "viewReports" as const,
+    requires: "viewReports",
+  },
+  {
+    href: "/admin/activity",
+    label: "Activity",
+    icon: History,
+    requires: "viewActivity",
   },
   {
     href: "/admin/settings",
     label: "Settings",
     icon: Settings,
-    requires: "manageUsers" as const,
+    requires: "settings",
   },
   {
     href: "/admin/others",
@@ -43,13 +51,22 @@ const TABS = [
 export default function AdminTabs({
   viewReports,
   manageUsers,
+  manageCategories,
+  hasSettingsAccess,
+  viewActivity,
 }: {
   viewReports: boolean;
   manageUsers: boolean;
+  manageCategories: boolean;
+  hasSettingsAccess: boolean;
+  viewActivity: boolean;
 }) {
   const visibleTabs = TABS.filter((tab) => {
     if (tab.requires === "viewReports") return viewReports;
     if (tab.requires === "manageUsers") return manageUsers;
+    if (tab.requires === "manageCategories") return manageCategories;
+    if (tab.requires === "settings") return hasSettingsAccess;
+    if (tab.requires === "viewActivity") return viewActivity;
     return true;
   });
 

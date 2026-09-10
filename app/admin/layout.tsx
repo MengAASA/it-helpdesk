@@ -22,7 +22,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     redirect(iamsLoginUrl(pathname));
   }
 
-  const permissions = await getPermissionsFor(session.staffId);
+  const permissions = await getPermissionsFor(session.staffId, session.role);
 
   return (
     <main className="flex w-full flex-1 flex-col gap-[24px] px-[42px] pb-[67.5px] pt-[42px]">
@@ -43,7 +43,15 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         </span>
       </div>
 
-      <AdminTabs viewReports={permissions.viewReports} manageUsers={permissions.manageUsers} />
+      <AdminTabs
+        viewReports={permissions.viewReports}
+        manageUsers={permissions.manageUsers}
+        manageCategories={permissions.manageCategories}
+        hasSettingsAccess={
+          permissions.manageEmailSettings || permissions.manageSla || permissions.manageTemplates
+        }
+        viewActivity={permissions.viewActivity}
+      />
 
       <PageTransition>{children}</PageTransition>
     </main>

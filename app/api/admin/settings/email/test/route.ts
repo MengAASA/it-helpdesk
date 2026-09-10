@@ -9,14 +9,14 @@ export async function POST() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const permissions = await getPermissionsFor(session.staffId);
-  if (!permissions.manageUsers) {
+  const permissions = await getPermissionsFor(session.staffId, session.role);
+  if (!permissions.manageEmailSettings) {
     return NextResponse.json({ error: "You don't have permission to manage settings" }, { status: 403 });
   }
 
   const result = await sendEmail({
     to: session.email,
-    subject: "PHN Helpdesk — test email",
+    subject: "PHN Helpdesk · test email",
     html: `<p>This is a test email from PHN Helpdesk. If you received this, your email settings are working.</p>`,
   });
 

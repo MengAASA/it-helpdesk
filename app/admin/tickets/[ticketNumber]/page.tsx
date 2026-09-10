@@ -50,7 +50,7 @@ export default async function TicketDetail({
     orderBy: { created_at: "asc" },
   });
   const session = await getIamsSession();
-  const permissions = session ? await getPermissionsFor(session.staffId) : null;
+  const permissions = session ? await getPermissionsFor(session.staffId, session.role) : null;
   const canManage = permissions?.manageTickets ?? false;
   const userRequestTypes = JSON.parse(ticket.user_request_types) as string[];
   const cannedResponses = canManage ? await getCannedResponses() : [];

@@ -47,7 +47,7 @@ export default function HowToGuide() {
                     Describe your problem in the box below, in your own words (e.g. &quot;My
                     printer is not working&quot;).
                   </li>
-                  <li>Wait a few seconds — the system will suggest the right category for you automatically.</li>
+                  <li>Wait a few seconds. The system will suggest the right category for you automatically.</li>
                   <li>
                     Click <strong>Continue with this category</strong> to proceed.
                   </li>
@@ -72,7 +72,7 @@ export default function HowToGuide() {
                     Terangkan masalah anda dalam kotak di bawah, menggunakan ayat sendiri
                     (contoh: &quot;Pencetak saya tidak berfungsi&quot;).
                   </li>
-                  <li>Tunggu beberapa saat — sistem akan mencadangkan kategori yang sesuai secara automatik.</li>
+                  <li>Tunggu beberapa saat, sistem akan mencadangkan kategori yang sesuai secara automatik.</li>
                   <li>
                     Klik <strong>Continue with this category</strong> untuk teruskan.
                   </li>

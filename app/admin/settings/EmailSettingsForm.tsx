@@ -17,12 +17,17 @@ type Settings = {
   notifyAssigned: boolean;
   notifyStatusChanged: boolean;
   notifyNewReply: boolean;
+  notifySlaBreach: boolean;
 };
 
-const NOTIFY_TOGGLES: { key: "notifyAssigned" | "notifyStatusChanged" | "notifyNewReply"; label: string }[] = [
+const NOTIFY_TOGGLES: {
+  key: "notifyAssigned" | "notifyStatusChanged" | "notifyNewReply" | "notifySlaBreach";
+  label: string;
+}[] = [
   { key: "notifyAssigned", label: "Ticket assigned to someone" },
   { key: "notifyStatusChanged", label: "Ticket status changes" },
   { key: "notifyNewReply", label: "New reply visible to requester" },
+  { key: "notifySlaBreach", label: "Ticket breaches its SLA target" },
 ];
 
 const inputClass =
@@ -97,7 +102,7 @@ export default function EmailSettingsForm({
             <span className="text-[11.25px] font-semibold text-ink">Email notifications</span>
             <p className="max-w-[420px] text-[9.75px] leading-[1.5] text-muted">
               Sends an email when a ticket is assigned, its status changes, or a requester gets a reply. Configure
-              your SMTP server here — no code or redeploy needed.
+              your SMTP server here, no code or redeploy needed.
             </p>
           </div>
         </div>
@@ -248,7 +253,7 @@ export default function EmailSettingsForm({
               transition={{ duration: 0.16 }}
               className="inline-flex items-center gap-[4.5px] text-[9.75px] font-medium text-[color:var(--color-emerald-text)]"
             >
-              <ShieldCheck size={11} strokeWidth={2.5} /> Test email sent — check your inbox.
+              <ShieldCheck size={11} strokeWidth={2.5} /> Test email sent. Check your inbox.
             </motion.span>
           )}
           {testResult === "error" && (

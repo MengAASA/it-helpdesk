@@ -1,8 +1,8 @@
 import { prisma } from "@/app/lib/db";
 
-type TeamMember = { staffNo: string; name: string; email: string | null };
+export type TeamMember = { staffNo: string; name: string; email: string | null };
 
-async function getTeamMembers(team: string): Promise<TeamMember[]> {
+export async function getTeamMembers(team: string): Promise<TeamMember[]> {
   const rows = await prisma.user_permissions.findMany({
     where: { team },
     select: { staff_no: true, name: true, email: true },

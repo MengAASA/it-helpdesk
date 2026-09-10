@@ -1,5 +1,6 @@
 import { sendEmail } from "@/app/lib/email";
 import { getEmailSettings } from "@/app/lib/emailSettings";
+import { getEmailTemplate, renderTemplate } from "@/app/lib/emailTemplates";
 
 const APP_URL = process.env.APP_URL ?? "";
 
@@ -22,6 +23,10 @@ function publicTicketUrl(ticketNumber: string): string | null {
   return APP_URL ? `${APP_URL}/tickets/${ticketNumber}` : null;
 }
 
+function linkBlock(url: string | null): string {
+  return url ? `<p><a href="${url}">View ticket</a></p>` : "";
+}
+
 export async function notifyTicketAssigned(opts: {
   ticketNumber: string;
   subject: string;
@@ -32,15 +37,20 @@ export async function notifyTicketAssigned(opts: {
   try {
     const settings = await getEmailSettings();
     if (!settings.notifyAssigned) return;
-    const link = adminTicketUrl(opts.ticketNumber);
+    const template = await getEmailTemplate("ticket_assigned");
+    const url = adminTicketUrl(opts.ticketNumber);
+    const subjectVars = { ticketNumber: opts.ticketNumber, subject: opts.subject };
+    const bodyVars = {
+      ticketNumber: opts.ticketNumber,
+      subject: escapeHtml(opts.subject),
+      assigneeName: escapeHtml(opts.assigneeName),
+      ticketUrl: url ?? "",
+      linkBlock: linkBlock(url),
+    };
     await sendEmail({
       to: opts.assigneeEmail,
-      subject: `[${opts.ticketNumber}] Assigned to you: ${opts.subject}`,
-      html: `
-        <p>Hi ${escapeHtml(opts.assigneeName)},</p>
-        <p>Ticket <strong>${opts.ticketNumber}</strong> — "${escapeHtml(opts.subject)}" has been assigned to you.</p>
-        ${link ? `<p><a href="${link}">View ticket</a></p>` : ""}
-      `,
+      subject: renderTemplate(template.subject, subjectVars),
+      html: renderTemplate(template.body, bodyVars),
     });
   } catch (err) {
     console.error("[notifications] notifyTicketAssigned failed:", err);
@@ -57,16 +67,21 @@ export async function notifyStatusChanged(opts: {
   try {
     const settings = await getEmailSettings();
     if (!settings.notifyStatusChanged) return;
-    const link = publicTicketUrl(opts.ticketNumber);
+    const template = await getEmailTemplate("status_changed");
+    const url = publicTicketUrl(opts.ticketNumber);
+    const subjectVars = { ticketNumber: opts.ticketNumber, subject: opts.subject, status: opts.status };
+    const bodyVars = {
+      ticketNumber: opts.ticketNumber,
+      subject: escapeHtml(opts.subject),
+      requesterName: escapeHtml(opts.requesterName),
+      status: escapeHtml(opts.status),
+      ticketUrl: url ?? "",
+      linkBlock: linkBlock(url),
+    };
     await sendEmail({
       to: opts.requesterEmail,
-      subject: `[${opts.ticketNumber}] Status updated: ${opts.status}`,
-      html: `
-        <p>Hi ${escapeHtml(opts.requesterName)},</p>
-        <p>Your ticket <strong>${opts.ticketNumber}</strong> — "${escapeHtml(opts.subject)}" is now
-          <strong>${escapeHtml(opts.status)}</strong>.</p>
-        ${link ? `<p><a href="${link}">View ticket</a></p>` : ""}
-      `,
+      subject: renderTemplate(template.subject, subjectVars),
+      html: renderTemplate(template.body, bodyVars),
     });
   } catch (err) {
     console.error("[notifications] notifyStatusChanged failed:", err);
@@ -83,19 +98,93 @@ export async function notifyTicketReopened(opts: {
   try {
     const settings = await getEmailSettings();
     if (!settings.notifyStatusChanged) return;
-    const link = adminTicketUrl(opts.ticketNumber);
+    const template = await getEmailTemplate("ticket_reopened");
+    const url = adminTicketUrl(opts.ticketNumber);
+    const subjectVars = { ticketNumber: opts.ticketNumber, subject: opts.subject };
+    const bodyVars = {
+      ticketNumber: opts.ticketNumber,
+      subject: escapeHtml(opts.subject),
+      assigneeName: escapeHtml(opts.assigneeName),
+      ticketUrl: url ?? "",
+      linkBlock: linkBlock(url),
+    };
     await sendEmail({
       to: opts.assigneeEmail,
-      subject: `[${opts.ticketNumber}] Reopened by requester: ${opts.subject}`,
-      html: `
-        <p>Hi ${escapeHtml(opts.assigneeName)},</p>
-        <p>The requester reopened ticket <strong>${opts.ticketNumber}</strong> — "${escapeHtml(opts.subject)}".
-          It looks like the issue isn't fully resolved yet.</p>
-        ${link ? `<p><a href="${link}">View ticket</a></p>` : ""}
-      `,
+      subject: renderTemplate(template.subject, subjectVars),
+      html: renderTemplate(template.body, bodyVars),
     });
   } catch (err) {
     console.error("[notifications] notifyTicketReopened failed:", err);
+  }
+}
+
+export async function notifyRequesterReply(opts: {
+  ticketNumber: string;
+  subject: string;
+  assigneeEmail: string | null;
+  assigneeName: string;
+  requesterName: string;
+  message: string;
+}): Promise<void> {
+  if (!opts.assigneeEmail) return;
+  try {
+    const settings = await getEmailSettings();
+    if (!settings.notifyNewReply) return;
+    const template = await getEmailTemplate("requester_reply");
+    const url = adminTicketUrl(opts.ticketNumber);
+    const subjectVars = { ticketNumber: opts.ticketNumber, subject: opts.subject, requesterName: opts.requesterName };
+    const bodyVars = {
+      ticketNumber: opts.ticketNumber,
+      subject: escapeHtml(opts.subject),
+      assigneeName: escapeHtml(opts.assigneeName),
+      requesterName: escapeHtml(opts.requesterName),
+      message: escapeHtml(opts.message).replace(/\n/g, "<br/>"),
+      ticketUrl: url ?? "",
+      linkBlock: linkBlock(url),
+    };
+    await sendEmail({
+      to: opts.assigneeEmail,
+      subject: renderTemplate(template.subject, subjectVars),
+      html: renderTemplate(template.body, bodyVars),
+    });
+  } catch (err) {
+    console.error("[notifications] notifyRequesterReply failed:", err);
+  }
+}
+
+/**
+ * Unlike the other notify* functions, this reports whether the email actually went out
+ * (rather than firing-and-forgetting) — the SLA breach scanner uses that to decide
+ * whether it's safe to stop retrying this ticket or whether it should try again next run.
+ */
+export async function notifySlaBreach(opts: {
+  ticketNumber: string;
+  subject: string;
+  recipientEmail: string;
+  recipientName: string;
+}): Promise<boolean> {
+  try {
+    const settings = await getEmailSettings();
+    if (!settings.notifySlaBreach) return false;
+    const template = await getEmailTemplate("sla_breach");
+    const url = adminTicketUrl(opts.ticketNumber);
+    const subjectVars = { ticketNumber: opts.ticketNumber, subject: opts.subject };
+    const bodyVars = {
+      ticketNumber: opts.ticketNumber,
+      subject: escapeHtml(opts.subject),
+      recipientName: escapeHtml(opts.recipientName),
+      ticketUrl: url ?? "",
+      linkBlock: linkBlock(url),
+    };
+    const result = await sendEmail({
+      to: opts.recipientEmail,
+      subject: renderTemplate(template.subject, subjectVars),
+      html: renderTemplate(template.body, bodyVars),
+    });
+    return result.ok;
+  } catch (err) {
+    console.error("[notifications] notifySlaBreach failed:", err);
+    return false;
   }
 }
 
@@ -109,18 +198,21 @@ export async function notifyNewReply(opts: {
   try {
     const settings = await getEmailSettings();
     if (!settings.notifyNewReply) return;
-    const link = publicTicketUrl(opts.ticketNumber);
+    const template = await getEmailTemplate("new_reply");
+    const url = publicTicketUrl(opts.ticketNumber);
+    const subjectVars = { ticketNumber: opts.ticketNumber, subject: opts.subject };
+    const bodyVars = {
+      ticketNumber: opts.ticketNumber,
+      subject: escapeHtml(opts.subject),
+      requesterName: escapeHtml(opts.requesterName),
+      message: escapeHtml(opts.message).replace(/\n/g, "<br/>"),
+      ticketUrl: url ?? "",
+      linkBlock: linkBlock(url),
+    };
     await sendEmail({
       to: opts.requesterEmail,
-      subject: `[${opts.ticketNumber}] New reply on your ticket`,
-      html: `
-        <p>Hi ${escapeHtml(opts.requesterName)},</p>
-        <p>There's a new reply on your ticket <strong>${opts.ticketNumber}</strong> — "${escapeHtml(opts.subject)}":</p>
-        <blockquote style="margin:0;padding:8px 12px;border-left:3px solid #ccc;color:#333;">
-          ${escapeHtml(opts.message).replace(/\n/g, "<br/>")}
-        </blockquote>
-        ${link ? `<p><a href="${link}">View ticket</a></p>` : ""}
-      `,
+      subject: renderTemplate(template.subject, subjectVars),
+      html: renderTemplate(template.body, bodyVars),
     });
   } catch (err) {
     console.error("[notifications] notifyNewReply failed:", err);

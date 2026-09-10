@@ -16,7 +16,7 @@ export default function SessionWatcher({ loginUrl }: { loginUrl: string }) {
           window.location.href = loginUrl;
         }
       } catch {
-        // Transient network hiccup — don't bounce the user on a fluke.
+        // Transient network hiccup, don't bounce the user on a fluke.
       }
     }, POLL_INTERVAL_MS);
 

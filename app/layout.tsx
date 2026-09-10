@@ -30,8 +30,8 @@ const ibmPlexMono = IBM_Plex_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "PHN Helpdesk — IT Support Portal",
-    template: "%s — PHN Helpdesk",
+    default: "PHN Helpdesk · IT Support Portal",
+    template: "%s · PHN Helpdesk",
   },
   description:
     "Submit and track IT support tickets with the PHN IT Department.",

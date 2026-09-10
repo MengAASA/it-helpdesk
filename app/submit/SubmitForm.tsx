@@ -92,7 +92,7 @@ export default function SubmitForm({ categories }: { categories: Category[] }) {
   const hasResult = !loading && !!top;
   const charHint =
     desc.trim().length < 12
-      ? "Type at least a sentence — the more detail, the better the routing."
+      ? "Type at least a sentence. The more detail, the better the routing."
       : `${desc.trim().split(/\s+/).length} words read`;
 
   const pickCategory = (name: string) => {
@@ -107,15 +107,22 @@ export default function SubmitForm({ categories }: { categories: Category[] }) {
           What can we help you with?
         </h1>
         <p className="max-w-[495px] text-[12.75px] leading-[1.6] text-muted">
-          Write the problem in your own words. Gemini reads what you type and
-          routes it to one of the {categories.length} helpdesk categories, so you do not have
-          to guess.
+          No need to guess a category, just describe the problem and we will sort it out.
         </p>
       </div>
 
       <div className="grid grid-cols-1 gap-[21px] lg:grid-cols-[1fr_320px] lg:items-start">
       <div className="flex flex-col gap-[24px]">
       <div className="flex flex-col overflow-hidden rounded-[10.5px] border border-card-border bg-white">
+        <div className="flex items-center gap-[10.5px] border-b border-divider bg-result-bg/50 px-[21px] py-[13.5px]">
+          <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full bg-admin-gradient text-paper">
+            <Sparkles size={14} strokeWidth={2.25} />
+          </span>
+          <p className="text-[11.25px] leading-[1.55] text-ink">
+            <span className="font-semibold">Hi, I&apos;m Boboi.</span> Write your problem in
+            your own words below and I&apos;ll match it to the right helpdesk category for you.
+          </p>
+        </div>
         <div className="flex flex-col gap-[9px] px-[21px] pb-[16.5px] pt-[19.5px]">
           <label
             htmlFor="issue"

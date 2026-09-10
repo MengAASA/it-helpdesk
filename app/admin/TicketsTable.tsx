@@ -1,8 +1,10 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   Search,
   ArrowUp,
@@ -10,22 +12,28 @@ import {
   ChevronsUpDown,
   SlidersHorizontal,
   TimerReset,
+  AlertTriangle,
   ChevronLeft,
   ChevronRight,
   Loader2,
   AlertCircle,
   Check,
   X,
+  RefreshCw,
+  Download,
 } from "lucide-react";
 import type { tickets as TicketRow } from "@prisma/client";
-import { isOverdue, type SlaHours } from "@/app/lib/sla";
+import { isOverdue, isAtRisk, type SlaHours } from "@/app/lib/sla";
+import { csvEscape } from "@/app/lib/csv";
 import Avatar from "@/app/components/Avatar";
 import FilterDropdown from "@/app/components/FilterDropdown";
 import ConfirmDialog from "@/app/components/ConfirmDialog";
 import AssigneeLookup, { type AssigneeOption } from "./tickets/[ticketNumber]/AssigneeLookup";
 
 const BULK_STATUSES = ["Open", "In Progress", "Closed"] as const;
+const BULK_PRIORITIES = ["High", "Normal", "Low"] as const;
 const BULK_CHUNK_SIZE = 100;
+const NEW_DATA_POLL_MS = 30_000;
 
 function chunk<T>(arr: T[], size: number): T[][] {
   const out: T[][] = [];
@@ -51,7 +59,7 @@ const PRIORITY_BAR: Record<string, string> = {
   Low: "border-l-[color:var(--color-emerald)]/40",
 };
 
-type SortKey =
+export type SortKey =
   | "ticket_number"
   | "subject"
   | "name"
@@ -61,6 +69,18 @@ type SortKey =
   | "status"
   | "created_at"
   | "priority";
+
+export const SORT_KEYS: readonly SortKey[] = [
+  "ticket_number",
+  "subject",
+  "name",
+  "category",
+  "team",
+  "assigned_to",
+  "status",
+  "created_at",
+  "priority",
+];
 
 const COLUMNS: { key: SortKey; label: string }[] = [
   { key: "ticket_number", label: "Ticket #" },
@@ -96,25 +116,68 @@ const SEARCH_FIELDS = [
 
 type TicketWithLabel = TicketRow & { submittedLabel: string };
 
+const EXPORT_COLUMNS: { key: keyof TicketWithLabel; header: string }[] = [
+  { key: "ticket_number", header: "Ticket Number" },
+  { key: "category", header: "Category" },
+  { key: "team", header: "Team" },
+  { key: "priority", header: "Priority" },
+  { key: "status", header: "Status" },
+  { key: "assigned_to", header: "Assigned To" },
+  { key: "name", header: "Requester Name" },
+  { key: "email", header: "Email" },
+  { key: "staff_no", header: "Staff No" },
+  { key: "phone", header: "Phone" },
+  { key: "location", header: "Location" },
+  { key: "department", header: "Department" },
+  { key: "subject", header: "Subject" },
+  { key: "submittedLabel", header: "Submitted" },
+];
+
+export type InitialFilters = {
+  status: string;
+  priority: string;
+  team: string;
+  category: string;
+  assignee: string;
+  overdueOnly: boolean;
+  search: string;
+  sortKey: SortKey;
+  sortDirection: "asc" | "desc";
+  page: number;
+};
+
 export default function TicketsTable({
   tickets,
   slaHours,
   canManage,
   assigneeOptions,
+  initialFilters,
 }: {
   tickets: TicketWithLabel[];
   slaHours: SlaHours;
   canManage: boolean;
   assigneeOptions: AssigneeOption[];
+  initialFilters?: InitialFilters;
 }) {
   const router = useRouter();
   const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+
+  const [since, setSince] = useState<Date>(() => new Date());
+  const [hasNewData, setHasNewData] = useState(false);
+  const mounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [selectAllMatching, setSelectAllMatching] = useState(false);
   const [bulkAssignee, setBulkAssignee] = useState("");
   const [pendingAction, setPendingAction] = useState<
-    { type: "status"; status: string } | { type: "assign"; assignedTo: string } | null
+    | { type: "status"; status: string }
+    | { type: "assign"; assignedTo: string }
+    | { type: "priority"; priority: string }
+    | null
   >(null);
   const [applying, setApplying] = useState(false);
   const [bulkResult, setBulkResult] = useState<
@@ -125,17 +188,18 @@ export default function TicketsTable({
   >(null);
   const headerCheckboxRef = useRef<HTMLInputElement>(null);
 
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("All");
-  const [priorityFilter, setPriorityFilter] = useState("All");
-  const [teamFilter, setTeamFilter] = useState("All");
-  const [categoryFilter, setCategoryFilter] = useState("All");
-  const [assigneeFilter, setAssigneeFilter] = useState("All");
+  const [search, setSearch] = useState(initialFilters?.search ?? "");
+  const [statusFilter, setStatusFilter] = useState(initialFilters?.status ?? "All");
+  const [priorityFilter, setPriorityFilter] = useState(initialFilters?.priority ?? "All");
+  const [teamFilter, setTeamFilter] = useState(initialFilters?.team ?? "All");
+  const [categoryFilter, setCategoryFilter] = useState(initialFilters?.category ?? "All");
+  const [assigneeFilter, setAssigneeFilter] = useState(initialFilters?.assignee ?? "All");
+  const [overdueOnly, setOverdueOnly] = useState(initialFilters?.overdueOnly ?? false);
   const [sort, setSort] = useState<{ key: SortKey; direction: "asc" | "desc" }>({
-    key: "created_at",
-    direction: "desc",
+    key: initialFilters?.sortKey ?? "created_at",
+    direction: initialFilters?.sortDirection ?? "desc",
   });
-  const [page, setPage] = useState(1);
+  const [page, setPage] = useState(initialFilters?.page ?? 1);
 
   const statuses = useMemo(() => uniqueSorted(tickets.map((t) => t.status)), [tickets]);
   const priorities = useMemo(() => uniqueSorted(tickets.map((t) => t.priority)), [tickets]);
@@ -162,10 +226,11 @@ export default function TicketsTable({
       if (teamFilter !== "All" && t.team !== teamFilter) return false;
       if (categoryFilter !== "All" && t.category !== categoryFilter) return false;
       if (assigneeFilter !== "All" && (t.assigned_to || UNASSIGNED) !== assigneeFilter) return false;
+      if (overdueOnly && slaHours.enabled && !isOverdue(t, slaHours)) return false;
       if (!q) return true;
       return SEARCH_FIELDS.some((field) => String(t[field] ?? "").toLowerCase().includes(q));
     });
-  }, [tickets, search, statusFilter, priorityFilter, teamFilter, categoryFilter, assigneeFilter]);
+  }, [tickets, search, statusFilter, priorityFilter, teamFilter, categoryFilter, assigneeFilter, overdueOnly, slaHours]);
 
   const sorted = useMemo(() => {
     const rows = [...filtered];
@@ -182,7 +247,7 @@ export default function TicketsTable({
     return rows;
   }, [filtered, sort]);
 
-  const filterSignature = `${search}|${statusFilter}|${priorityFilter}|${teamFilter}|${categoryFilter}|${assigneeFilter}|${sort.key}|${sort.direction}`;
+  const filterSignature = `${search}|${statusFilter}|${priorityFilter}|${teamFilter}|${categoryFilter}|${assigneeFilter}|${overdueOnly}|${sort.key}|${sort.direction}`;
   const [prevFilterSignature, setPrevFilterSignature] = useState(filterSignature);
   if (filterSignature !== prevFilterSignature) {
     setPrevFilterSignature(filterSignature);
@@ -200,6 +265,76 @@ export default function TicketsTable({
     () => sorted.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
     [sorted, currentPage]
   );
+
+  useEffect(() => {
+    const qs = new URLSearchParams();
+    if (search.trim()) qs.set("q", search.trim());
+    if (statusFilter !== "All") qs.set("status", statusFilter);
+    if (priorityFilter !== "All") qs.set("priority", priorityFilter);
+    if (teamFilter !== "All") qs.set("team", teamFilter);
+    if (categoryFilter !== "All") qs.set("category", categoryFilter);
+    if (assigneeFilter !== "All") qs.set("assignee", assigneeFilter);
+    if (overdueOnly) qs.set("overdue", "1");
+    if (sort.key !== "created_at" || sort.direction !== "desc") {
+      qs.set("sort", sort.key);
+      qs.set("dir", sort.direction);
+    }
+    if (currentPage !== 1) qs.set("page", String(currentPage));
+
+    const query = qs.toString();
+    const url = `${window.location.pathname}${query ? `?${query}` : ""}`;
+    window.history.replaceState(null, "", url);
+  }, [
+    search,
+    statusFilter,
+    priorityFilter,
+    teamFilter,
+    categoryFilter,
+    assigneeFilter,
+    overdueOnly,
+    sort,
+    currentPage,
+  ]);
+
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      if (hasNewData) return;
+      try {
+        const res = await fetch(
+          `${basePath}/api/admin/tickets/changes?since=${encodeURIComponent(since.toISOString())}`,
+          { cache: "no-store" }
+        );
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.hasChanges) setHasNewData(true);
+      } catch {
+        // Transient network hiccup, try again next tick.
+      }
+    }, NEW_DATA_POLL_MS);
+    return () => clearInterval(interval);
+  }, [since, hasNewData, basePath]);
+
+  function refreshForNewData() {
+    setHasNewData(false);
+    setSince(new Date());
+    router.refresh();
+  }
+
+  function exportCsv() {
+    const lines = [
+      EXPORT_COLUMNS.map((c) => csvEscape(c.header)).join(","),
+      ...sorted.map((t) => EXPORT_COLUMNS.map((c) => csvEscape(t[c.key])).join(",")),
+    ];
+    const blob = new Blob([lines.join("\r\n")], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `tickets-export-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
 
   const pageTicketNumbers = useMemo(() => paginated.map((t) => t.ticket_number), [paginated]);
   const pageAllSelected = pageTicketNumbers.length > 0 && pageTicketNumbers.every((tn) => selected.has(tn));
@@ -259,6 +394,8 @@ export default function TicketsTable({
             ticketNumbers: c,
             ...(pendingAction.type === "status"
               ? { status: pendingAction.status }
+              : pendingAction.type === "priority"
+              ? { priority: pendingAction.priority }
               : { assignedTo: pendingAction.assignedTo }),
           }),
         });
@@ -271,6 +408,8 @@ export default function TicketsTable({
       clearSelection();
       setBulkAssignee("");
       setPendingAction(null);
+      setHasNewData(false);
+      setSince(new Date());
       router.refresh();
     } catch {
       setBulkResult({ kind: "error" });
@@ -282,6 +421,46 @@ export default function TicketsTable({
 
   return (
     <div className="flex flex-col gap-[12px]">
+      {mounted &&
+        createPortal(
+          <AnimatePresence>
+            {hasNewData && (
+              <motion.div
+                initial={{ opacity: 0, y: 16, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 16, scale: 0.96 }}
+                transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+                className="fixed bottom-[22px] right-[22px] z-50 flex w-[300px] items-start gap-[10.5px] rounded-[12px] border border-card-border bg-white px-[15px] py-[13.5px] shadow-[0_10px_28px_rgba(15,23,42,0.18)]"
+              >
+                <span className="mt-[1.5px] flex h-[24px] w-[24px] shrink-0 items-center justify-center rounded-[7px] bg-result-bg text-primary">
+                  <RefreshCw size={12} strokeWidth={2.25} />
+                </span>
+                <div className="flex flex-1 flex-col gap-[7.5px]">
+                  <span className="text-[10.5px] leading-[1.4] text-ink">
+                    New tickets or updates are available.
+                  </span>
+                  <button
+                    type="button"
+                    onClick={refreshForNewData}
+                    className="w-fit rounded-full bg-admin-gradient px-[12px] py-[5.25px] text-[9.75px] font-semibold text-paper"
+                  >
+                    Refresh
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setHasNewData(false)}
+                  className="text-faint hover:text-muted"
+                  aria-label="Dismiss"
+                >
+                  <X size={13} strokeWidth={2.5} />
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>,
+          document.body
+        )}
+
       <div className="flex flex-wrap items-center gap-[9px] rounded-[12px] border border-card-border bg-white px-[13.5px] py-[12px] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
         <div className="relative min-w-[220px] flex-1">
           <Search
@@ -306,6 +485,21 @@ export default function TicketsTable({
         <FilterDropdown label="Team" value={teamFilter} onChange={setTeamFilter} options={teams} />
         <FilterDropdown label="Category" value={categoryFilter} onChange={setCategoryFilter} options={categories} />
         <FilterDropdown label="Assigned" value={assigneeFilter} onChange={setAssigneeFilter} options={assignees} />
+        {slaHours.enabled && (
+          <button
+            type="button"
+            onClick={() => setOverdueOnly((v) => !v)}
+            aria-pressed={overdueOnly}
+            className={`inline-flex items-center gap-[4.5px] rounded-full border px-[10.5px] py-[6px] text-[9.75px] font-semibold transition-colors ${
+              overdueOnly
+                ? "border-amber-border bg-amber-bg text-amber-text-strong"
+                : "border-card-border bg-white text-muted hover:border-primary/40 hover:text-primary"
+            }`}
+          >
+            <TimerReset size={11} strokeWidth={2.5} />
+            Overdue only
+          </button>
+        )}
       </div>
 
       {canManage && selectionCount > 0 && (
@@ -332,6 +526,19 @@ export default function TicketsTable({
               className="rounded-full border border-card-border bg-paper px-[10.5px] py-[5.25px] text-[9.75px] font-semibold text-muted transition-colors hover:border-primary/40 hover:text-primary disabled:cursor-not-allowed disabled:opacity-60"
             >
               {s}
+            </button>
+          ))}
+          <span className="mx-[3px] h-[15px] w-px bg-divider" />
+          <span className="text-[9px] font-semibold uppercase tracking-[0.05em] text-muted-2">Set priority</span>
+          {BULK_PRIORITIES.map((p) => (
+            <button
+              key={p}
+              type="button"
+              disabled={applying}
+              onClick={() => setPendingAction({ type: "priority", priority: p })}
+              className="rounded-full border border-card-border bg-paper px-[10.5px] py-[5.25px] text-[9.75px] font-semibold text-muted transition-colors hover:border-primary/40 hover:text-primary disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {p}
             </button>
           ))}
           <span className="mx-[3px] h-[15px] w-px bg-divider" />
@@ -389,7 +596,7 @@ export default function TicketsTable({
           )}
           {bulkResult.kind === "success" && `Updated ${bulkResult.updated} ticket${bulkResult.updated === 1 ? "" : "s"}`}
           {bulkResult.kind === "partial" &&
-            `Updated ${bulkResult.updated} ticket${bulkResult.updated === 1 ? "" : "s"} — ${bulkResult.notFoundCount} no longer exist${bulkResult.notFoundCount === 1 ? "s" : ""}`}
+            `Updated ${bulkResult.updated} ticket${bulkResult.updated === 1 ? "" : "s"}; ${bulkResult.notFoundCount} no longer exist${bulkResult.notFoundCount === 1 ? "s" : ""}`}
           {bulkResult.kind === "error" && "Failed to update tickets"}
         </div>
       )}
@@ -400,6 +607,8 @@ export default function TicketsTable({
         title={
           pendingAction?.type === "status"
             ? `Set ${selectionCount} ticket${selectionCount === 1 ? "" : "s"} to "${pendingAction.status}"?`
+            : pendingAction?.type === "priority"
+            ? `Set ${selectionCount} ticket${selectionCount === 1 ? "" : "s"} to "${pendingAction.priority}" priority?`
             : `Assign ${selectionCount} ticket${selectionCount === 1 ? "" : "s"} to ${
                 pendingAction?.type === "assign" && pendingAction.assignedTo.trim()
                   ? pendingAction.assignedTo.trim()
@@ -412,9 +621,20 @@ export default function TicketsTable({
         onCancel={() => !applying && setPendingAction(null)}
       />
 
-      <span className="text-[9px] text-faint">
-        Showing {rangeStart}–{rangeEnd} of {sorted.length} tickets
-      </span>
+      <div className="flex flex-wrap items-center justify-between gap-[9px]">
+        <span className="text-[9px] text-faint">
+          Showing {rangeStart}–{rangeEnd} of {sorted.length} tickets
+        </span>
+        <button
+          type="button"
+          onClick={exportCsv}
+          disabled={sorted.length === 0}
+          className="inline-flex items-center gap-[6px] whitespace-nowrap rounded-full border border-card-border bg-white px-[10.5px] py-[6px] text-[9px] font-semibold text-ink shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-colors hover:border-primary/40 hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          <Download size={11} strokeWidth={2.25} />
+          Export {sorted.length} ticket{sorted.length === 1 ? "" : "s"} to CSV
+        </button>
+      </div>
 
       <div className="overflow-x-auto rounded-[12px] border border-card-border shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
         <table className="w-full min-w-[900px] border-collapse text-left text-[10.5px]">
@@ -535,6 +755,15 @@ export default function TicketsTable({
                       >
                         <TimerReset size={9} strokeWidth={2.5} />
                         Overdue
+                      </span>
+                    )}
+                    {isAtRisk(t, slaHours) && (
+                      <span
+                        title="Approaching SLA target for its priority"
+                        className="inline-flex items-center gap-[3px] rounded-full border border-amber-border bg-white px-[6px] py-[1.5px] text-[8px] font-semibold uppercase tracking-[0.04em] text-amber-text-strong"
+                      >
+                        <AlertTriangle size={9} strokeWidth={2.5} />
+                        At risk
                       </span>
                     )}
                   </div>

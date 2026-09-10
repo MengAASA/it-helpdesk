@@ -1,4 +1,5 @@
 import { prisma } from "@/app/lib/db";
+import { encryptSecret, decryptSecret } from "@/app/lib/secretCrypto";
 
 export type EmailSettings = {
   enabled: boolean;
@@ -12,6 +13,7 @@ export type EmailSettings = {
   notifyAssigned: boolean;
   notifyStatusChanged: boolean;
   notifyNewReply: boolean;
+  notifySlaBreach: boolean;
 };
 
 export const EMPTY_EMAIL_SETTINGS: EmailSettings = {
@@ -26,6 +28,7 @@ export const EMPTY_EMAIL_SETTINGS: EmailSettings = {
   notifyAssigned: true,
   notifyStatusChanged: true,
   notifyNewReply: true,
+  notifySlaBreach: true,
 };
 
 export async function getEmailSettings(): Promise<EmailSettings> {
@@ -37,12 +40,13 @@ export async function getEmailSettings(): Promise<EmailSettings> {
     port: row.smtp_port,
     secure: !!row.smtp_secure,
     username: row.smtp_username ?? "",
-    password: row.smtp_password ?? "",
+    password: row.smtp_password ? decryptSecret(row.smtp_password) : "",
     fromName: row.from_name ?? "",
     fromEmail: row.from_email ?? "",
     notifyAssigned: !!row.notify_assigned,
     notifyStatusChanged: !!row.notify_status_changed,
     notifyNewReply: !!row.notify_new_reply,
+    notifySlaBreach: !!row.notify_sla_breach,
   };
 }
 
@@ -53,12 +57,13 @@ export async function setEmailSettings(settings: EmailSettings, updatedBy: strin
     smtp_port: settings.port,
     smtp_secure: settings.secure,
     smtp_username: settings.username || null,
-    smtp_password: settings.password || null,
+    smtp_password: settings.password ? encryptSecret(settings.password) : null,
     from_name: settings.fromName || null,
     from_email: settings.fromEmail || null,
     notify_assigned: settings.notifyAssigned,
     notify_status_changed: settings.notifyStatusChanged,
     notify_new_reply: settings.notifyNewReply,
+    notify_sla_breach: settings.notifySlaBreach,
     updated_by: updatedBy,
   };
   await prisma.email_settings.upsert({

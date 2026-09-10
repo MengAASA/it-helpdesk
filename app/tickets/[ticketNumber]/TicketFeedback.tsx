@@ -72,7 +72,7 @@ export default function TicketFeedback({
         className="flex items-center gap-[9px] rounded-[14px] border border-[color:var(--color-blue)]/25 bg-[color:var(--color-blue-light)] px-[18px] py-[15px] text-[10.5px] font-medium text-[color:var(--color-blue-text)]"
       >
         <RotateCcw size={14} strokeWidth={2.25} />
-        Ticket reopened — our team has been notified.
+        Ticket reopened. Our team has been notified.
       </motion.div>
     );
   }
