@@ -58,9 +58,14 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col bg-paper font-body text-ink">
         <header className="sticky top-0 z-50 flex items-center justify-between gap-[18px] border-b border-white/10 bg-nav-gradient px-[21px] py-[16.5px] text-paper shadow-[0_1px_0_rgba(255,255,255,0.06)_inset] md:px-[42px]">
           <Link href="/" className="flex items-center gap-[10.5px] text-paper">
-            <div className="flex h-[25.5px] w-[25.5px] items-center justify-center rounded-md bg-primary font-heading text-[11.25px] font-bold text-paper">
-              P
-            </div>
+            {/* eslint-disable-next-line @next/next/no-img-element -- next/image's optimizer 400s on this asset under our basePath; a plain <img> avoids it for this fixed-size header icon. */}
+            <img
+              src={`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/logo-it.jpg`}
+              alt="PHN Helpdesk logo"
+              width={31.5}
+              height={31.5}
+              className="h-[31.5px] w-[31.5px] shrink-0 rounded-full object-cover"
+            />
             <div className="flex flex-col gap-[1.5px]">
               <span className="font-heading text-xs font-semibold tracking-[0.01em]">
                 PHN Helpdesk
