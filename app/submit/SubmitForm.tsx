@@ -227,7 +227,7 @@ export default function SubmitForm({ categories }: { categories: Category[] }) {
                   priority: result?.priority ?? "Normal",
                   description: desc,
                 }).toString()}`}
-                className="inline-flex items-center gap-[7.5px] whitespace-nowrap rounded-full bg-admin-gradient px-[19.5px] py-[9.75px] text-[10.5px] font-semibold text-paper shadow-[0_4px_12px_rgba(37,99,235,0.25)] transition-transform hover:-translate-y-[1px]"
+                className="inline-flex items-center gap-[7.5px] whitespace-nowrap rounded-full bg-admin-gradient px-[19.5px] py-[9.75px] text-[10.5px] font-semibold text-paper shadow-[0_4px_12px_rgba(46,16,101,0.3)] transition-transform hover:-translate-y-[1px]"
               >
                 Continue with this category <ArrowRight size={14} strokeWidth={2.5} />
               </Link>

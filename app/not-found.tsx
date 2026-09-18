@@ -24,7 +24,7 @@ export default function NotFound() {
       <div className="flex flex-wrap items-center justify-center gap-[10.5px]">
         <Link
           href="/"
-          className="inline-flex items-center gap-[7.5px] whitespace-nowrap rounded-full bg-admin-gradient px-[19.5px] py-[9.75px] text-[10.5px] font-semibold text-paper shadow-[0_4px_12px_rgba(37,99,235,0.25)]"
+          className="inline-flex items-center gap-[7.5px] whitespace-nowrap rounded-full bg-admin-gradient px-[19.5px] py-[9.75px] text-[10.5px] font-semibold text-paper shadow-[0_4px_12px_rgba(46,16,101,0.3)]"
         >
           <Home size={13} strokeWidth={2.25} />
           Back to home

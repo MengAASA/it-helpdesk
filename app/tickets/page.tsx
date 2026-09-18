@@ -495,7 +495,7 @@ export default function Tickets() {
             <button
               type="submit"
               disabled={loading}
-              className="inline-flex items-center justify-center gap-[7.5px] whitespace-nowrap rounded-[9px] bg-admin-gradient px-[21px] py-[11.25px] text-[10.5px] font-semibold text-paper shadow-[0_4px_12px_rgba(37,99,235,0.25)] transition-transform hover:-translate-y-[1px] disabled:opacity-60 disabled:hover:translate-y-0"
+              className="inline-flex items-center justify-center gap-[7.5px] whitespace-nowrap rounded-[9px] bg-admin-gradient px-[21px] py-[11.25px] text-[10.5px] font-semibold text-paper shadow-[0_4px_12px_rgba(46,16,101,0.3)] transition-transform hover:-translate-y-[1px] disabled:opacity-60 disabled:hover:translate-y-0"
             >
               <Search size={13} strokeWidth={2.25} />
               {loading ? "Searching…" : "Search"}

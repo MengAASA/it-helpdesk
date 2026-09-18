@@ -28,7 +28,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     <main className="flex w-full flex-1 flex-col gap-[24px] px-[42px] pb-[67.5px] pt-[42px]">
       <SessionWatcher loginUrl={iamsLoginUrl("/admin")} />
 
-      <div className="flex flex-wrap items-center justify-between gap-[15px] rounded-[16px] bg-admin-gradient px-[24px] py-[19.5px] text-paper shadow-[0_10px_28px_rgba(37,99,235,0.2)]">
+      <div className="flex flex-wrap items-center justify-between gap-[15px] rounded-[16px] bg-admin-gradient px-[24px] py-[19.5px] text-paper shadow-[0_10px_28px_rgba(46,16,101,0.25)]">
         <div className="flex items-center gap-[13.5px]">
           <span className="flex h-[42px] w-[42px] items-center justify-center rounded-full border border-paper/30 bg-paper/15 font-heading text-[15px] font-semibold">
             {initials(session.name)}

@@ -73,7 +73,7 @@ export default async function TicketDetail({
 
   return (
     <div className="flex flex-col gap-[18px]">
-      <div className="flex flex-wrap items-start justify-between gap-[15px] rounded-[16px] bg-admin-gradient px-[24px] py-[21px] text-paper shadow-[0_10px_28px_rgba(37,99,235,0.2)]">
+      <div className="flex flex-wrap items-start justify-between gap-[15px] rounded-[16px] bg-admin-gradient px-[24px] py-[21px] text-paper shadow-[0_10px_28px_rgba(46,16,101,0.25)]">
         <div className="flex flex-col gap-[4.5px]">
           <span className="font-mono-plex text-[10.5px] text-paper/75">{ticket.ticket_number}</span>
           <h1 className="font-heading text-[21px] font-semibold tracking-[-0.02em]">{ticket.subject}</h1>

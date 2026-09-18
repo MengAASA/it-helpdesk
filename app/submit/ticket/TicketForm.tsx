@@ -626,7 +626,7 @@ function TicketForm({
           <div className="flex items-center gap-[10.5px] border-t border-divider bg-paper px-[27px] py-[16.5px]">
             <Link
               href="/submit"
-              className="inline-flex flex-1 items-center justify-center gap-[7.5px] whitespace-nowrap rounded-full bg-admin-gradient px-[16.5px] py-[9.75px] text-[10.5px] font-semibold text-paper shadow-[0_4px_12px_rgba(37,99,235,0.25)]"
+              className="inline-flex flex-1 items-center justify-center gap-[7.5px] whitespace-nowrap rounded-full bg-admin-gradient px-[16.5px] py-[9.75px] text-[10.5px] font-semibold text-paper shadow-[0_4px_12px_rgba(46,16,101,0.3)]"
             >
               Submit another
             </Link>
@@ -801,7 +801,7 @@ function TicketForm({
             ref={submitButtonRef}
             type="submit"
             disabled={verifying}
-            className="inline-flex w-fit items-center gap-[7.5px] whitespace-nowrap rounded-full bg-admin-gradient px-[19.5px] py-[9.75px] text-[10.5px] font-semibold text-paper shadow-[0_4px_12px_rgba(37,99,235,0.25)] transition-transform hover:-translate-y-[1px] disabled:opacity-60 disabled:hover:translate-y-0"
+            className="inline-flex w-fit items-center gap-[7.5px] whitespace-nowrap rounded-full bg-admin-gradient px-[19.5px] py-[9.75px] text-[10.5px] font-semibold text-paper shadow-[0_4px_12px_rgba(46,16,101,0.3)] transition-transform hover:-translate-y-[1px] disabled:opacity-60 disabled:hover:translate-y-0"
           >
             {verifying ? "Verifying…" : "Submit ticket"} <ArrowRight size={14} strokeWidth={2.5} />
           </button>

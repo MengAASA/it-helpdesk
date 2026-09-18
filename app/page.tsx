@@ -79,14 +79,14 @@ export default async function Home() {
           </Link>
         </section>
 
-        <section className="flex flex-wrap items-center justify-between gap-[21px] rounded-[16px] bg-admin-gradient px-[27px] py-[22.5px] text-paper shadow-[0_10px_28px_rgba(37,99,235,0.2)]">
+        <section className="flex flex-wrap items-center justify-between gap-[21px] rounded-[16px] border border-card-border bg-white px-[27px] py-[22.5px] text-ink shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
           <div className="flex max-w-[465px] items-start gap-[13.5px]">
-            <span className="flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-[10px] border border-paper/30 bg-paper/15">
+            <span className="flex h-[36px] w-[36px] shrink-0 items-center justify-center rounded-[10px] bg-[color:var(--color-blue-light)] text-[color:var(--color-blue-text)]">
               <ShieldCheck size={17} strokeWidth={2.25} />
             </span>
             <div className="flex flex-col gap-[4.5px]">
-              <span className="font-heading text-[13.5px] font-semibold">Are you IT staff?</span>
-              <p className="text-[11.25px] leading-[1.6] text-paper/80">
+              <span className="font-heading text-[13.5px] font-semibold text-ink">Are you IT staff?</span>
+              <p className="text-[11.25px] leading-[1.6] text-muted">
                 Sign in to the administrator console to assign, escalate and close
                 tickets, and to review queue reports.
               </p>
@@ -94,7 +94,7 @@ export default async function Home() {
           </div>
           <a
             href={adminHref}
-            className="inline-flex items-center gap-[7.5px] whitespace-nowrap rounded-full border border-paper/30 bg-paper/15 px-[19.5px] py-[9.75px] text-[10.5px] font-semibold text-paper transition-colors hover:bg-paper hover:text-ink"
+            className="inline-flex items-center gap-[7.5px] whitespace-nowrap rounded-full bg-nav-gradient px-[19.5px] py-[9.75px] text-[10.5px] font-semibold text-paper shadow-[0_4px_12px_rgba(46,16,101,0.25)] transition-transform hover:-translate-y-[1px]"
           >
             {adminLabel} <ArrowRight size={14} strokeWidth={2.5} />
           </a>
