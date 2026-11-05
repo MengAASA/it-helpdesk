@@ -206,13 +206,13 @@ export default function RocketLaunch({
           className={`flex items-center justify-center rounded-full border shadow-[0_4px_12px_rgba(15,23,42,0.12)] transition-colors duration-300 ${
             delivered
               ? "border-[color:var(--color-emerald)]/40 bg-[color:var(--color-emerald-light)] text-[color:var(--color-emerald-text)]"
-              : "border-card-border bg-white text-primary"
+              : "border-card-border bg-surface text-primary"
           }`}
           style={{ width: TARGET_SIZE, height: TARGET_SIZE }}
         >
           <Building2 size={16} strokeWidth={2} />
         </motion.span>
-        <span className="rounded-full bg-ink/80 px-[6px] py-[1.5px] text-[7.5px] font-semibold uppercase tracking-[0.1em] text-paper">
+        <span className="rounded-full bg-ink/80 px-[6px] py-[1.5px] text-[7.5px] font-semibold uppercase tracking-[0.1em] text-white">
           IT Dept
         </span>
       </div>

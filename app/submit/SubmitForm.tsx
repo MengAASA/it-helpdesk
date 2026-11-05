@@ -113,9 +113,9 @@ export default function SubmitForm({ categories }: { categories: Category[] }) {
 
       <div className="grid grid-cols-1 gap-[21px] lg:grid-cols-[1fr_320px] lg:items-start">
       <div className="flex flex-col gap-[24px]">
-      <div className="flex flex-col overflow-hidden rounded-[10.5px] border border-card-border bg-white">
+      <div className="flex flex-col overflow-hidden rounded-[10.5px] border border-card-border bg-surface">
         <div className="flex items-center gap-[10.5px] border-b border-divider bg-result-bg/50 px-[21px] py-[13.5px]">
-          <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full bg-admin-gradient text-paper">
+          <span className="flex h-[30px] w-[30px] shrink-0 items-center justify-center rounded-full bg-admin-gradient text-white">
             <Sparkles size={14} strokeWidth={2.25} />
           </span>
           <p className="text-[11.25px] leading-[1.55] text-ink">
@@ -175,7 +175,7 @@ export default function SubmitForm({ categories }: { categories: Category[] }) {
               )}
             </div>
 
-            <div className="flex flex-col gap-[9px] rounded-[12px] border border-result-border bg-white px-[18px] py-[16.5px] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+            <div className="flex flex-col gap-[9px] rounded-[12px] border border-result-border bg-surface px-[18px] py-[16.5px] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
               <span className="font-heading text-[18px] font-semibold tracking-[-0.01em]">
                 {top.category}
               </span>
@@ -207,7 +207,7 @@ export default function SubmitForm({ categories }: { categories: Category[] }) {
                       key={alt.name}
                       type="button"
                       onClick={() => pickCategory(alt.name)}
-                      className="inline-flex items-center gap-[7.5px] rounded-full border border-card-border bg-white px-[11.25px] py-[6px] text-[9.75px] font-medium text-ink transition-colors hover:border-[color:var(--color-blue)]/40 hover:text-[color:var(--color-blue-text)]"
+                      className="inline-flex items-center gap-[7.5px] rounded-full border border-card-border bg-surface px-[11.25px] py-[6px] text-[9.75px] font-medium text-ink transition-colors hover:border-[color:var(--color-blue)]/40 hover:text-[color:var(--color-blue-text)]"
                     >
                       {alt.name}{" "}
                       <span className="font-mono-plex text-[8.25px] text-faint">
@@ -227,7 +227,7 @@ export default function SubmitForm({ categories }: { categories: Category[] }) {
                   priority: result?.priority ?? "Normal",
                   description: desc,
                 }).toString()}`}
-                className="inline-flex items-center gap-[7.5px] whitespace-nowrap rounded-full bg-admin-gradient px-[19.5px] py-[9.75px] text-[10.5px] font-semibold text-paper shadow-[0_4px_12px_rgba(46,16,101,0.3)] transition-transform hover:-translate-y-[1px]"
+                className="inline-flex items-center gap-[7.5px] whitespace-nowrap rounded-full bg-admin-gradient px-[19.5px] py-[9.75px] text-[10.5px] font-semibold text-white shadow-[0_4px_12px_rgba(46,16,101,0.3)] transition-transform hover:-translate-y-[1px]"
               >
                 Continue with this category <ArrowRight size={14} strokeWidth={2.5} />
               </Link>
@@ -257,7 +257,7 @@ export default function SubmitForm({ categories }: { categories: Category[] }) {
                 key={cat.id}
                 type="button"
                 onClick={() => pickCategory(cat.name)}
-                className="flex items-center justify-between gap-[10.5px] rounded-[10px] border border-card-border bg-white px-[13.5px] py-[11.25px] text-left text-[11.25px] font-medium text-ink shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-colors hover:border-[color:var(--color-blue)]/40 hover:text-[color:var(--color-blue-text)]"
+                className="flex items-center justify-between gap-[10.5px] rounded-[10px] border border-card-border bg-surface px-[13.5px] py-[11.25px] text-left text-[11.25px] font-medium text-ink shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-colors hover:border-[color:var(--color-blue)]/40 hover:text-[color:var(--color-blue-text)]"
               >
                 {cat.name}
                 <ChevronRight size={13} strokeWidth={2.25} className="text-faint" />

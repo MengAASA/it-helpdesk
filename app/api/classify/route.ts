@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { teamFor } from "@/app/lib/categories";
 import { getCategories } from "@/app/lib/categoriesServer";
 
-const MODEL = "gemini-3.5-flash-lite";
+const MODEL = "openai/gpt-oss-20b";
 
 function buildResponseSchema(categoryNames: string[]) {
   return {
@@ -22,6 +22,7 @@ function buildResponseSchema(categoryNames: string[]) {
           },
         },
         required: ["category", "confidence", "reason"],
+        additionalProperties: false,
       },
       alternates: {
         type: "array",
@@ -33,6 +34,7 @@ function buildResponseSchema(categoryNames: string[]) {
             confidence: { type: "integer" },
           },
           required: ["category", "confidence"],
+          additionalProperties: false,
         },
       },
       priority: {
@@ -43,6 +45,7 @@ function buildResponseSchema(categoryNames: string[]) {
       },
     },
     required: ["primary", "alternates", "priority"],
+    additionalProperties: false,
   };
 }
 
@@ -59,10 +62,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Description too short" }, { status: 400 });
   }
 
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.GROQ_API_KEY;
   if (!apiKey) {
     return NextResponse.json(
-      { error: "Server is missing GEMINI_API_KEY" },
+      { error: "Server is missing GROQ_API_KEY" },
       { status: 500 }
     );
   }
@@ -81,52 +84,51 @@ Issue description: "${description}"`;
   const startedAt = Date.now();
   let res: Response;
   try {
-    res = await fetch("https://generativelanguage.googleapis.com/v1beta/interactions", {
+    res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "x-goog-api-key": apiKey,
+        Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
         model: MODEL,
-        input: prompt,
+        messages: [{ role: "user", content: prompt }],
+        reasoning_effort: "low",
         response_format: {
-          type: "text",
-          mime_type: "application/json",
-          schema: responseSchema,
+          type: "json_schema",
+          json_schema: {
+            name: "ticket_classification",
+            strict: true,
+            schema: responseSchema,
+          },
         },
       }),
     });
   } catch (err) {
-    console.error("[classify] fetch to Gemini failed:", err);
-    return NextResponse.json({ error: "Could not reach Gemini" }, { status: 502 });
+    console.error("[classify] fetch to Groq failed:", err);
+    return NextResponse.json({ error: "Could not reach Groq" }, { status: 502 });
   }
 
   const latencyMs = Date.now() - startedAt;
 
   if (!res.ok) {
     const detail = await res.text();
-    console.error(`[classify] Gemini returned ${res.status} after ${latencyMs}ms:`, detail);
+    console.error(`[classify] Groq returned ${res.status} after ${latencyMs}ms:`, detail);
     return NextResponse.json(
-      { error: `Gemini API error (${res.status}): ${detail}` },
+      { error: `Groq API error (${res.status}): ${detail}` },
       { status: 502 }
     );
   }
 
   const data = await res.json();
   console.log(
-    `[classify] model=${data.model} latency=${latencyMs}ms tokens(in/out)=${data.usage?.total_input_tokens}/${data.usage?.total_output_tokens} id=${data.id}`
+    `[classify] model=${data.model} latency=${latencyMs}ms tokens(in/out)=${data.usage?.prompt_tokens}/${data.usage?.completion_tokens} id=${data.id}`
   );
-  const steps: { type: string; content?: { type: string; text?: string }[] }[] =
-    data.steps ?? [];
-  const outputText = [...steps]
-    .reverse()
-    .find((s) => s.type === "model_output")
-    ?.content?.find((c) => c.type === "text")?.text;
+  const outputText: string | undefined = data.choices?.[0]?.message?.content;
 
   if (!outputText) {
     return NextResponse.json(
-      { error: "Gemini response had no output text" },
+      { error: "Groq response had no output text" },
       { status: 502 }
     );
   }

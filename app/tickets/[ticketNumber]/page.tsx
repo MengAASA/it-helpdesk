@@ -101,10 +101,10 @@ export default async function PublicTicketDetail({
 
   return (
     <main className="mx-auto flex w-full flex-1 flex-col gap-[18px] px-[42px] pb-[67.5px] pt-[42px]">
-      <div className="flex flex-col gap-[13.5px] rounded-[18px] bg-admin-gradient px-[27px] py-[22.5px] text-paper shadow-[0_12px_32px_rgba(76,29,149,0.22)]">
+      <div className="flex flex-col gap-[13.5px] rounded-[18px] bg-admin-gradient px-[27px] py-[22.5px] text-white shadow-[0_12px_32px_rgba(76,29,149,0.22)]">
         <div className="flex flex-wrap items-start justify-between gap-[15px]">
           <div className="flex flex-col gap-[6px]">
-            <span className="font-mono-plex text-[10.5px] uppercase tracking-[0.08em] text-paper/70">
+            <span className="font-mono-plex text-[10.5px] uppercase tracking-[0.08em] text-white/70">
               {ticket.ticket_number}
             </span>
             <h1 className="font-heading text-[24px] font-semibold leading-[1.2] tracking-[-0.02em]">
@@ -113,7 +113,7 @@ export default async function PublicTicketDetail({
           </div>
           <div className="flex items-center gap-[9px]">
             <span
-              className={`inline-flex items-center gap-[6px] rounded-full bg-white px-[12px] py-[6px] text-[10px] font-semibold shadow-[0_2px_6px_rgba(15,23,42,0.14)] ${
+              className={`inline-flex items-center gap-[6px] rounded-full bg-surface px-[12px] py-[6px] text-[10px] font-semibold shadow-[0_2px_6px_rgba(15,23,42,0.14)] ${
                 STATUS_TEXT[ticket.status] ?? STATUS_TEXT.Open
               }`}
             >
@@ -121,7 +121,7 @@ export default async function PublicTicketDetail({
               {ticket.status}
             </span>
             <span
-              className={`inline-flex items-center gap-[6px] rounded-full bg-white px-[12px] py-[6px] text-[10px] font-semibold shadow-[0_2px_6px_rgba(15,23,42,0.14)] ${
+              className={`inline-flex items-center gap-[6px] rounded-full bg-surface px-[12px] py-[6px] text-[10px] font-semibold shadow-[0_2px_6px_rgba(15,23,42,0.14)] ${
                 PRIORITY_TEXT[ticket.priority] ?? PRIORITY_TEXT.Normal
               }`}
             >
@@ -136,7 +136,7 @@ export default async function PublicTicketDetail({
 
       <div className="grid grid-cols-1 gap-[18px] lg:grid-cols-[1fr_360px] lg:items-start">
         <div className="flex flex-col gap-[16.5px]">
-          <div className="flex flex-col gap-[15px] rounded-[14px] border border-card-border bg-white px-[18px] py-[16.5px] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+          <div className="flex flex-col gap-[15px] rounded-[14px] border border-card-border bg-surface px-[18px] py-[16.5px] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
             <div className="flex items-center gap-[10.5px]">
               <Avatar name={ticket.name} size={36} />
               <div className="flex flex-col">
@@ -189,7 +189,7 @@ export default async function PublicTicketDetail({
             )}
           </div>
 
-          <div className="flex flex-col gap-[9px] rounded-[14px] border border-card-border bg-white px-[18px] py-[16.5px] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+          <div className="flex flex-col gap-[9px] rounded-[14px] border border-card-border bg-surface px-[18px] py-[16.5px] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
             <span className="inline-flex items-center gap-[6px] text-[9px] font-semibold uppercase tracking-[0.06em] text-muted-2">
               <IdCard size={12} strokeWidth={2.25} />
               Contact details
@@ -203,7 +203,7 @@ export default async function PublicTicketDetail({
             </div>
           </div>
 
-          <div className="flex flex-col gap-[9px] rounded-[14px] border border-card-border bg-white px-[18px] py-[16.5px] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+          <div className="flex flex-col gap-[9px] rounded-[14px] border border-card-border bg-surface px-[18px] py-[16.5px] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
             <span className="inline-flex items-center gap-[6px] text-[9px] font-semibold uppercase tracking-[0.06em] text-muted-2">
               <MessageSquareText size={12} strokeWidth={2.25} />
               Issue
@@ -214,7 +214,7 @@ export default async function PublicTicketDetail({
           </div>
 
           {attachments.length > 0 && (
-            <div className="flex flex-col gap-[9px] rounded-[14px] border border-card-border bg-white px-[18px] py-[16.5px] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+            <div className="flex flex-col gap-[9px] rounded-[14px] border border-card-border bg-surface px-[18px] py-[16.5px] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
               <span className="inline-flex items-center gap-[6px] text-[9px] font-semibold uppercase tracking-[0.06em] text-muted-2">
                 <Paperclip size={12} strokeWidth={2.25} />
                 Attachments ({attachments.length})
@@ -237,7 +237,7 @@ export default async function PublicTicketDetail({
         </div>
 
         <div className="flex flex-col gap-[15px] lg:sticky lg:top-[84px]">
-          <div className="flex flex-col gap-[12px] rounded-[14px] border border-card-border bg-white px-[18px] py-[16.5px] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+          <div className="flex flex-col gap-[12px] rounded-[14px] border border-card-border bg-surface px-[18px] py-[16.5px] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
             <span className="inline-flex items-center gap-[6px] text-[9px] font-semibold uppercase tracking-[0.06em] text-muted-2">
               <History size={12} strokeWidth={2.25} />
               Activity
@@ -258,7 +258,7 @@ export default async function PublicTicketDetail({
             </div>
           </div>
 
-          <div className="flex flex-col gap-[12px] rounded-[14px] border border-card-border bg-white px-[18px] py-[16.5px] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+          <div className="flex flex-col gap-[12px] rounded-[14px] border border-card-border bg-surface px-[18px] py-[16.5px] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
             <span className="inline-flex items-center gap-[6px] text-[9px] font-semibold uppercase tracking-[0.06em] text-muted-2">
               <MessageSquareText size={12} strokeWidth={2.25} />
               Conversation

@@ -1,36 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import Avatar from "./Avatar";
-
-const POLL_INTERVAL_MS = 20_000;
-
-type OnlineUser = { staffId: string; name: string };
+import { useOnlineUsers, type OnlineUser } from "./useOnlineUsers";
 
 export default function OnlineUsersBar({ initialUsers }: { initialUsers: OnlineUser[] }) {
-  const [users, setUsers] = useState(initialUsers);
-
-  useEffect(() => {
-    const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
-    let cancelled = false;
-
-    async function poll() {
-      try {
-        const res = await fetch(`${basePath}/api/presence`, { cache: "no-store" });
-        const data = await res.json();
-        if (!cancelled && Array.isArray(data.users)) setUsers(data.users);
-      } catch {
-        // Transient network hiccup, keep showing the last known list.
-      }
-    }
-
-    const interval = setInterval(poll, POLL_INTERVAL_MS);
-    return () => {
-      cancelled = true;
-      clearInterval(interval);
-    };
-  }, []);
+  const users = useOnlineUsers(initialUsers);
 
   return (
     <AnimatePresence initial={false}>
@@ -44,7 +19,7 @@ export default function OnlineUsersBar({ initialUsers }: { initialUsers: OnlineU
           className="overflow-hidden border-t border-white/10 bg-nav-gradient"
         >
           <div className="flex flex-wrap items-center gap-[10.5px] px-[42px] py-[10.5px] text-[9.75px] text-nav-text">
-            <span className="inline-flex items-center gap-[6px] font-semibold text-paper">
+            <span className="inline-flex items-center gap-[6px] font-semibold text-white">
               <span className="relative flex h-[7px] w-[7px]">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[color:var(--color-emerald)] opacity-75" />
                 <span className="relative inline-flex h-[7px] w-[7px] rounded-full bg-[color:var(--color-emerald)]" />

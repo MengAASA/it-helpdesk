@@ -1,10 +1,10 @@
 const PALETTE = [
-  { bg: "bg-primary", text: "text-paper" },
-  { bg: "bg-[color:var(--color-violet)]", text: "text-paper" },
-  { bg: "bg-[color:var(--color-blue)]", text: "text-paper" },
-  { bg: "bg-[color:var(--color-rose)]", text: "text-paper" },
-  { bg: "bg-[color:var(--color-emerald)]", text: "text-paper" },
-  { bg: "bg-[color:var(--color-amber-solid)]", text: "text-paper" },
+  { bg: "bg-primary", text: "text-white" },
+  { bg: "bg-[color:var(--color-violet)]", text: "text-white" },
+  { bg: "bg-[color:var(--color-blue)]", text: "text-white" },
+  { bg: "bg-[color:var(--color-rose)]", text: "text-white" },
+  { bg: "bg-[color:var(--color-emerald)]", text: "text-white" },
+  { bg: "bg-[color:var(--color-amber-solid)]", text: "text-white" },
 ];
 
 function initials(name: string): string {

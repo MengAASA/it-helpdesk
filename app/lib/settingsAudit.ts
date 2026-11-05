@@ -3,7 +3,7 @@ import type { Permissions } from "@/app/lib/permissions";
 import type { EmailSettings } from "@/app/lib/emailSettings";
 import type { SlaHours } from "@/app/lib/sla";
 
-export type SettingsAuditCategory = "permissions" | "email_settings" | "sla_settings";
+export type SettingsAuditCategory = "permissions" | "email_settings" | "sla_settings" | "system_links";
 
 export type SettingsAuditRow = {
   id: number;
@@ -136,6 +136,28 @@ export async function logSlaSettingsChange(opts: {
   await logSettingsChange({
     category: "sla_settings",
     summary: changes.join(", "),
+    actorName: opts.actorName,
+    actorEmail: opts.actorEmail,
+  });
+}
+
+export async function logSystemLinkChange(opts: {
+  action: "added" | "edited" | "removed";
+  name: string;
+  url: string;
+  actorName: string;
+  actorEmail: string;
+}): Promise<void> {
+  let host = opts.url;
+  try {
+    host = new URL(opts.url).host;
+  } catch {
+    // keep the raw address
+  }
+  const verb = { added: "Added", edited: "Edited", removed: "Removed" }[opts.action];
+  await logSettingsChange({
+    category: "system_links",
+    summary: `${verb} link "${opts.name}" (${host})`.slice(0, 500),
     actorName: opts.actorName,
     actorEmail: opts.actorEmail,
   });

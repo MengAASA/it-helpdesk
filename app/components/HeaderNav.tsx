@@ -36,7 +36,7 @@ export default function HeaderNav({
         ))}
         <a
           href={adminHref}
-          className="inline-flex items-center gap-[6px] whitespace-nowrap rounded-[4.5px] bg-paper px-[13.5px] py-[6.75px] text-[9.75px] font-semibold text-ink hover:bg-white hover:text-primary"
+          className="inline-flex items-center gap-[6px] whitespace-nowrap rounded-[4.5px] bg-paper px-[13.5px] py-[6.75px] text-[9.75px] font-semibold text-ink hover:bg-surface hover:text-primary"
         >
           {adminLabel}
         </a>
@@ -48,7 +48,7 @@ export default function HeaderNav({
         onClick={() => setOpen((v) => !v)}
         aria-label={open ? "Close menu" : "Open menu"}
         aria-expanded={open}
-        className="flex h-[33px] w-[33px] items-center justify-center rounded-[7.5px] text-paper hover:bg-white/10 md:hidden"
+        className="flex h-[33px] w-[33px] items-center justify-center rounded-[7.5px] text-white hover:bg-white/10 md:hidden"
       >
         {open ? <X size={18} strokeWidth={2.25} /> : <Menu size={18} strokeWidth={2.25} />}
       </button>

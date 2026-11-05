@@ -78,7 +78,7 @@ export default function TicketFeedback({
   }
 
   return (
-    <div className="flex flex-col gap-[12px] rounded-[14px] border border-card-border bg-white px-[18px] py-[16.5px] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+    <div className="flex flex-col gap-[12px] rounded-[14px] border border-card-border bg-surface px-[18px] py-[16.5px] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
       <span className="text-[9px] font-semibold uppercase tracking-[0.06em] text-muted-2">Was this resolved?</span>
 
       <div className="flex items-center gap-[9px]">
@@ -91,7 +91,7 @@ export default function TicketFeedback({
           aria-label="Yes, it's resolved"
           className={`flex h-[38px] w-[38px] items-center justify-center rounded-full border transition-colors ${
             feedback === "up"
-              ? "border-[color:var(--color-emerald)] bg-[color:var(--color-emerald)] text-paper"
+              ? "border-[color:var(--color-emerald)] bg-[color:var(--color-emerald)] text-white"
               : "border-card-border bg-paper text-muted hover:border-[color:var(--color-emerald)]/40 hover:text-[color:var(--color-emerald-text)]"
           }`}
         >
@@ -107,7 +107,7 @@ export default function TicketFeedback({
           aria-label="No, it's not resolved"
           className={`flex h-[38px] w-[38px] items-center justify-center rounded-full border transition-colors ${
             feedback === "down"
-              ? "border-[color:var(--color-rose)] bg-[color:var(--color-rose)] text-paper"
+              ? "border-[color:var(--color-rose)] bg-[color:var(--color-rose)] text-white"
               : "border-card-border bg-paper text-muted hover:border-[color:var(--color-rose)]/40 hover:text-[color:var(--color-rose-text)]"
           }`}
         >
@@ -149,7 +149,7 @@ export default function TicketFeedback({
                 type="button"
                 onClick={() => setConfirmOpen(true)}
                 disabled={reopening}
-                className="inline-flex w-fit items-center gap-[6px] whitespace-nowrap rounded-full bg-admin-gradient px-[13.5px] py-[7.5px] text-[9.75px] font-semibold text-paper disabled:opacity-60"
+                className="inline-flex w-fit items-center gap-[6px] whitespace-nowrap rounded-full bg-admin-gradient px-[13.5px] py-[7.5px] text-[9.75px] font-semibold text-white disabled:opacity-60"
               >
                 <RotateCcw size={12} strokeWidth={2.25} />
                 {reopening ? "Reopening…" : "Reopen this ticket"}

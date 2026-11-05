@@ -39,9 +39,9 @@ function formatTimestamp(iso: string): string {
 }
 
 const STATUS_BTN_STYLES: Record<string, string> = {
-  Open: "border-[color:var(--color-blue)] bg-[color:var(--color-blue)] text-paper",
-  "In Progress": "border-[color:var(--color-amber-solid)] bg-[color:var(--color-amber-solid)] text-paper",
-  Closed: "border-[color:var(--color-emerald)] bg-[color:var(--color-emerald)] text-paper",
+  Open: "border-[color:var(--color-blue)] bg-[color:var(--color-blue)] text-white",
+  "In Progress": "border-[color:var(--color-amber-solid)] bg-[color:var(--color-amber-solid)] text-white",
+  Closed: "border-[color:var(--color-emerald)] bg-[color:var(--color-emerald)] text-white",
 };
 
 const PRIORITY_STYLES: Record<string, string> = {
@@ -266,7 +266,7 @@ export default function TicketWorkspace({
           </div>
         )}
 
-        <div className="flex flex-col gap-[10.5px] rounded-[12px] border border-card-border bg-white px-[18px] py-[16.5px] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+        <div className="flex flex-col gap-[10.5px] rounded-[12px] border border-card-border bg-surface px-[18px] py-[16.5px] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
           <div className="flex items-center gap-[9px]">
             <Avatar name={requesterName} size={27} />
             <div className="flex flex-col gap-[0px]">
@@ -307,7 +307,7 @@ export default function TicketWorkspace({
           )}
         </div>
 
-        <div className="flex flex-col gap-[9px] rounded-[12px] border border-card-border bg-white px-[18px] py-[16.5px] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+        <div className="flex flex-col gap-[9px] rounded-[12px] border border-card-border bg-surface px-[18px] py-[16.5px] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
           <span className="text-[9px] font-semibold uppercase tracking-[0.06em] text-muted-2">
             Activity ({timeline.length})
           </span>
@@ -337,8 +337,8 @@ export default function TicketWorkspace({
                           <span
                             className={`inline-flex items-center gap-[3px] rounded-full border px-[6px] py-[1.5px] text-[8px] font-semibold uppercase tracking-[0.04em] ${
                               item.data.isPublic
-                                ? "border-[color:var(--color-emerald)]/30 bg-white text-[color:var(--color-emerald-text)]"
-                                : "border-card-border bg-white text-muted-2"
+                                ? "border-[color:var(--color-emerald)]/30 bg-surface text-[color:var(--color-emerald-text)]"
+                                : "border-card-border bg-surface text-muted-2"
                             }`}
                           >
                             {item.data.isPublic ? <Eye size={9} strokeWidth={2.5} /> : <EyeOff size={9} strokeWidth={2.5} />}
@@ -428,7 +428,7 @@ export default function TicketWorkspace({
                 <button
                   type="submit"
                   disabled={postingNote || !noteText.trim()}
-                  className="inline-flex items-center gap-[6px] whitespace-nowrap rounded-full bg-admin-gradient px-[13.5px] py-[8px] text-[9.75px] font-semibold text-paper disabled:opacity-60"
+                  className="inline-flex items-center gap-[6px] whitespace-nowrap rounded-full bg-admin-gradient px-[13.5px] py-[8px] text-[9.75px] font-semibold text-white disabled:opacity-60"
                 >
                   <Send size={12} strokeWidth={2.25} />
                   {postingNote ? "Posting…" : "Add note"}
@@ -441,7 +441,7 @@ export default function TicketWorkspace({
 
       {/* Sidebar */}
       <div className="flex flex-col gap-[12px] lg:sticky lg:top-[84px]">
-        <div className="flex flex-col gap-[6px] rounded-[12px] border border-card-border bg-white px-[15px] py-[13.5px] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+        <div className="flex flex-col gap-[6px] rounded-[12px] border border-card-border bg-surface px-[15px] py-[13.5px] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
           <div className="flex items-center justify-between gap-[9px]">
             <span className="text-[9px] font-semibold uppercase tracking-[0.06em] text-muted-2">Status</span>
             {savingStatus && (
@@ -482,7 +482,7 @@ export default function TicketWorkspace({
           </div>
         </div>
 
-        <div className="flex flex-col gap-[6px] rounded-[12px] border border-card-border bg-white px-[15px] py-[13.5px] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+        <div className="flex flex-col gap-[6px] rounded-[12px] border border-card-border bg-surface px-[15px] py-[13.5px] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
           <div className="flex items-center justify-between gap-[9px]">
             <span className="text-[9px] font-semibold uppercase tracking-[0.06em] text-muted-2">Assigned to</span>
             {!savingAssignee && assigneeSaveState === "saved" && (
@@ -509,7 +509,7 @@ export default function TicketWorkspace({
               type="button"
               disabled={savingAssignee || !canManage}
               onClick={handleSaveAssignee}
-              className="inline-flex shrink-0 items-center gap-[4.5px] whitespace-nowrap rounded-[7.5px] bg-ink px-[10.5px] py-[6px] text-[9.75px] font-semibold text-paper transition-colors hover:bg-primary disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex shrink-0 items-center gap-[4.5px] whitespace-nowrap rounded-[7.5px] bg-ink px-[10.5px] py-[6px] text-[9.75px] font-semibold text-white transition-colors hover:bg-primary disabled:cursor-not-allowed disabled:opacity-60"
             >
               {savingAssignee ? (
                 <Loader2 size={11} strokeWidth={2.5} className="animate-spin" />
@@ -529,7 +529,7 @@ export default function TicketWorkspace({
           </button>
         </div>
 
-        <div className="flex flex-col items-center gap-[9px] rounded-[12px] border border-card-border bg-white px-[15px] py-[16.5px] text-center shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+        <div className="flex flex-col items-center gap-[9px] rounded-[12px] border border-card-border bg-surface px-[15px] py-[16.5px] text-center shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
           <Avatar name={requesterName} size={39} />
           <div className="flex flex-col gap-[1.5px]">
             <span className="text-[11.25px] font-semibold text-ink">{requesterName}</span>
@@ -544,7 +544,7 @@ export default function TicketWorkspace({
           </div>
         </div>
 
-        <div className="flex flex-col divide-y divide-divider rounded-[12px] border border-card-border bg-white px-[15px] py-[6px] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+        <div className="flex flex-col divide-y divide-divider rounded-[12px] border border-card-border bg-surface px-[15px] py-[6px] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
           <DetailRow icon={Tag} label="Category" value={category} />
           <DetailRow icon={Users2} label="Routed to" value={team} />
           <DetailRow

@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { mkdir, writeFile } from "fs/promises";
 import path from "path";
-import { randomBytes } from "crypto";
 import { Prisma } from "@prisma/client";
 import { prisma } from "@/app/lib/db";
 import { getNextRoundRobinAssignee } from "@/app/lib/roundRobin";
 import { getCategories } from "@/app/lib/categoriesServer";
 import { notifyTicketAssigned } from "@/app/lib/notifications";
+import { generateTicketNumber, normalizeTicketNumber } from "@/app/lib/ticketNumber";
 
 const UPLOADS_DIR = path.join(process.cwd(), "uploads");
 const MAX_FILES = 2;
@@ -25,10 +25,15 @@ const REQUIRED_FIELDS = [
   "message",
 ] as const;
 
-function generateTicketNumber() {
-  const timestamp = Date.now().toString(36).toUpperCase();
-  const random = randomBytes(4).toString("hex").toUpperCase();
-  return `TCK-${timestamp}${random}`;
+/** A fresh ticket number, drawing again in the (very unlikely) case one is already taken. */
+async function newTicketNumber(): Promise<string> {
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const candidate = generateTicketNumber();
+    const taken = await prisma.tickets.findUnique({ where: { ticket_number: candidate }, select: { id: true } });
+    if (!taken) return candidate;
+  }
+  // Practically unreachable; the unique index and the P2002 handler below still guard a clash.
+  return generateTicketNumber();
 }
 
 export async function POST(req: Request) {
@@ -64,7 +69,7 @@ export async function POST(req: Request) {
     }
   }
 
-  const ticketNumber = generateTicketNumber();
+  const ticketNumber = await newTicketNumber();
   const ticketDir = path.join(UPLOADS_DIR, ticketNumber);
   if (files.length > 0) await mkdir(ticketDir, { recursive: true });
 
@@ -142,7 +147,8 @@ export async function POST(req: Request) {
 
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
-  const ticketNumber = searchParams.get("ticketNumber")?.trim();
+  const rawTicketNumber = searchParams.get("ticketNumber")?.trim();
+  const ticketNumber = rawTicketNumber ? normalizeTicketNumber(rawTicketNumber) : undefined;
   const staffNo = searchParams.get("staffNo")?.trim();
 
   if (!ticketNumber && !staffNo) {

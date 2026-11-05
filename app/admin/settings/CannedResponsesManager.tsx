@@ -1,16 +1,66 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
-import { Plus, Pencil, Trash2, Eye, EyeOff, AlertTriangle, Check, X } from "lucide-react";
+import { Eye, EyeOff, Loader2, Pencil, Plus, Trash2 } from "lucide-react";
 import type { CannedResponse } from "@/app/lib/cannedResponses";
 import ConfirmDialog from "@/app/components/ConfirmDialog";
+import { Field, Notice, Panel, PanelHeader, SwitchRow, btnGhost, btnPrimary, iconBtn, inputClass, textareaClass } from "./settingsParts";
 
-export default function CannedResponsesManager({
-  initialResponses,
+const EASE = [0.22, 1, 0.36, 1] as const;
+
+function VisibilityTag({ isPublic }: { isPublic: boolean }) {
+  return (
+    <span
+      className={`inline-flex h-[20px] shrink-0 items-center gap-[4px] rounded-full px-[7px] text-[11px] font-medium ${
+        isPublic ? "bg-emerald-light text-emerald-text" : "bg-surface-2 text-muted-2"
+      }`}
+    >
+      {isPublic ? <Eye size={11} strokeWidth={2} /> : <EyeOff size={11} strokeWidth={2} />}
+      {isPublic ? "Visible to requester" : "Internal"}
+    </span>
+  );
+}
+
+/** Title, text and visibility, shared by the add form and the inline editor. */
+function ReplyFields({
+  title,
+  setTitle,
+  text,
+  setText,
+  isPublic,
+  setIsPublic,
+  autoFocus,
 }: {
-  initialResponses: CannedResponse[];
+  title: string;
+  setTitle: (v: string) => void;
+  text: string;
+  setText: (v: string) => void;
+  isPublic: boolean;
+  setIsPublic: (v: boolean) => void;
+  autoFocus?: boolean;
 }) {
+  return (
+    <>
+      <Field label="Title">
+        <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Password reset steps" autoFocus={autoFocus} className={inputClass} />
+      </Field>
+      <Field label="Reply text">
+        <textarea value={text} onChange={(e) => setText(e.target.value)} rows={4} placeholder="Reply text…" className={textareaClass} />
+      </Field>
+      <SwitchRow
+        label="Visible to requester by default"
+        hint={isPublic ? "Starts as a reply the requester can see" : "Starts as an internal note"}
+        checked={isPublic}
+        onChange={setIsPublic}
+      />
+    </>
+  );
+}
+
+export default function CannedResponsesManager({ initialResponses }: { initialResponses: CannedResponse[] }) {
+  const router = useRouter();
   const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
   const [responses, setResponses] = useState(initialResponses);
   const [adding, setAdding] = useState(false);
@@ -46,11 +96,20 @@ export default function CannedResponsesManager({
       setText("");
       setIsPublic(false);
       setAdding(false);
+      router.refresh();
     } catch (err) {
       setError((err as Error).message);
     } finally {
       setSaving(false);
     }
+  }
+
+  function cancelAdd() {
+    setAdding(false);
+    setTitle("");
+    setText("");
+    setIsPublic(false);
+    setError(null);
   }
 
   function startEdit(r: CannedResponse) {
@@ -79,12 +138,11 @@ export default function CannedResponsesManager({
       if (!res.ok) throw new Error(data.error ?? "Could not save template");
       setResponses((prev) =>
         prev
-          .map((r) =>
-            r.id === editingId ? { id: editingId, title: editTitle.trim(), body: editText.trim(), isPublic: editIsPublic } : r
-          )
-          .sort((a, b) => a.title.localeCompare(b.title))
+          .map((r) => (r.id === editingId ? { id: editingId, title: editTitle.trim(), body: editText.trim(), isPublic: editIsPublic } : r))
+          .sort((a, b) => a.title.localeCompare(b.title)),
       );
       setEditingId(null);
+      router.refresh();
     } catch (err) {
       setError((err as Error).message);
     } finally {
@@ -103,6 +161,7 @@ export default function CannedResponsesManager({
       if (!res.ok) throw new Error(data.error ?? "Could not delete template");
       setResponses((prev) => prev.filter((r) => r.id !== pendingDelete.id));
       setPendingDelete(null);
+      router.refresh();
     } catch (err) {
       setError((err as Error).message);
       setPendingDelete(null);
@@ -111,209 +170,147 @@ export default function CannedResponsesManager({
     }
   }
 
+  const publicCount = responses.filter((r) => r.isPublic).length;
+
   return (
-    <div className="flex flex-col gap-[15px]">
+    <Panel>
+      <PanelHeader
+        title="Canned replies"
+        description={
+          <>
+            Saved replies agents can drop into a ticket.{" "}
+            <span className="tabular-nums">
+              {responses.length} {responses.length === 1 ? "reply" : "replies"} · {publicCount} visible to requesters
+            </span>
+          </>
+        }
+        action={
+          <button type="button" onClick={() => setAdding(true)} disabled={adding} className={btnPrimary}>
+            <Plus size={14} strokeWidth={2} />
+            Add reply
+          </button>
+        }
+      />
+
       {error && (
-        <div className="flex items-center gap-[7.5px] rounded-[7.5px] border border-amber-border bg-amber-bg px-[12px] py-[9px] text-[9.75px] text-amber-text-strong">
-          <AlertTriangle size={12} strokeWidth={2.25} />
-          {error}
+        <div className="px-[20px] pb-[16px]">
+          <Notice tone="error">{error}</Notice>
         </div>
       )}
 
-      <AnimatePresence mode="wait" initial={false}>
-        {!adding ? (
-          <motion.button
-            key="add-button"
-            type="button"
-            onClick={() => setAdding(true)}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.12 }}
-            className="inline-flex w-fit items-center gap-[6px] whitespace-nowrap rounded-full bg-admin-gradient px-[15px] py-[7.5px] text-[9.75px] font-semibold text-paper"
-          >
-            <Plus size={12} strokeWidth={2.5} />
-            Add template
-          </motion.button>
-        ) : (
+      <AnimatePresence initial={false}>
+        {adding && (
           <motion.form
             key="add-form"
             onSubmit={handleAdd}
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-            className="flex flex-col gap-[10.5px] overflow-hidden rounded-[12px] border border-card-border bg-white px-[15px] shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
-            style={{ paddingTop: 13.5, paddingBottom: 13.5 }}
+            transition={{ duration: 0.2, ease: EASE }}
+            className="overflow-hidden"
           >
-            <input
-              type="text"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              placeholder="Template title"
-              autoFocus
-              className="w-full rounded-[7.5px] border border-card-border bg-paper px-[10.5px] py-[7.5px] text-[10.5px] text-ink outline-none focus:border-primary"
-            />
-            <textarea
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              rows={3}
-              placeholder="Reply text…"
-              className="w-full resize-y rounded-[7.5px] border border-card-border bg-paper px-[10.5px] py-[8px] text-[10.5px] text-ink outline-none focus:border-primary"
-            />
-            <label className="inline-flex w-fit cursor-pointer items-center gap-[7.5px] text-[9.75px] font-medium text-muted">
-              <input
-                type="checkbox"
-                checked={isPublic}
-                onChange={(e) => setIsPublic(e.target.checked)}
-                className="h-[12px] w-[12px] accent-[color:var(--color-emerald)]"
+            <div className="mx-[12px] mb-[12px] flex flex-col gap-[12px] rounded-[12px] bg-primary-soft/60 p-[12px]">
+              <ReplyFields
+                title={title}
+                setTitle={setTitle}
+                text={text}
+                setText={setText}
+                isPublic={isPublic}
+                setIsPublic={setIsPublic}
+                autoFocus
               />
-              <span className="inline-flex items-center gap-[4.5px]">
-                {isPublic ? (
-                  <Eye size={11} strokeWidth={2.25} className="text-[color:var(--color-emerald-text)]" />
-                ) : (
-                  <EyeOff size={11} strokeWidth={2.25} />
-                )}
-                Visible to requester by default
-              </span>
-            </label>
-            <div className="flex items-center gap-[9px]">
-              <button
-                type="submit"
-                disabled={saving || !title.trim() || !text.trim()}
-                className="inline-flex items-center gap-[6px] whitespace-nowrap rounded-full bg-admin-gradient px-[13.5px] py-[7.5px] text-[9.75px] font-semibold text-paper disabled:opacity-60"
-              >
-                {saving ? "Adding…" : "Add"}
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setAdding(false);
-                  setTitle("");
-                  setText("");
-                  setIsPublic(false);
-                  setError(null);
-                }}
-                className="text-[9.75px] font-semibold text-muted hover:text-primary"
-              >
-                Cancel
-              </button>
+              <div className="flex items-center justify-end gap-[8px]">
+                <button type="button" onClick={cancelAdd} className={btnGhost}>
+                  Cancel
+                </button>
+                <button type="submit" disabled={saving || !title.trim() || !text.trim()} className={btnPrimary}>
+                  {saving && <Loader2 size={14} strokeWidth={2} className="animate-spin" />}
+                  {saving ? "Adding…" : "Add reply"}
+                </button>
+              </div>
             </div>
           </motion.form>
         )}
       </AnimatePresence>
 
-      <div className="flex flex-col gap-[9px]">
-        <AnimatePresence initial={false}>
-          {responses.map((r) => (
-            <motion.div
-              key={r.id}
-              layout
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              transition={{ duration: 0.16, ease: [0.4, 0, 0.2, 1] }}
-              className="flex flex-col gap-[9px] rounded-[12px] border border-card-border bg-white px-[15px] py-[13.5px] shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
-            >
-              {editingId === r.id ? (
-                <>
-                  <input
-                    type="text"
-                    value={editTitle}
-                    onChange={(e) => setEditTitle(e.target.value)}
-                    className="w-full rounded-[7.5px] border border-card-border bg-paper px-[10.5px] py-[7.5px] text-[10.5px] text-ink outline-none focus:border-primary"
-                  />
-                  <textarea
-                    value={editText}
-                    onChange={(e) => setEditText(e.target.value)}
-                    rows={3}
-                    className="w-full resize-y rounded-[7.5px] border border-card-border bg-paper px-[10.5px] py-[8px] text-[10.5px] text-ink outline-none focus:border-primary"
-                  />
-                  <label className="inline-flex w-fit cursor-pointer items-center gap-[7.5px] text-[9.75px] font-medium text-muted">
-                    <input
-                      type="checkbox"
-                      checked={editIsPublic}
-                      onChange={(e) => setEditIsPublic(e.target.checked)}
-                      className="h-[12px] w-[12px] accent-[color:var(--color-emerald)]"
+      {responses.length === 0 ? (
+        <div className="flex flex-col items-center gap-[4px] border-t border-card-border/60 px-[16px] py-[40px] text-center">
+          <p className="text-[13px] font-medium text-ink">No canned replies yet</p>
+          <p className="text-[12px] text-muted-2">Add one and agents can insert it into any ticket.</p>
+        </div>
+      ) : (
+        <ul className="flex flex-col border-t border-card-border/60 px-[6px] py-[6px]">
+          <AnimatePresence initial={false}>
+            {responses.map((r) => (
+              <motion.li
+                key={r.id}
+                layout="position"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.2, ease: EASE }}
+                className="group/reply overflow-hidden"
+              >
+                {editingId === r.id ? (
+                  <div className="m-[6px] flex flex-col gap-[12px] rounded-[12px] bg-surface-2/60 p-[12px]">
+                    <ReplyFields
+                      title={editTitle}
+                      setTitle={setEditTitle}
+                      text={editText}
+                      setText={setEditText}
+                      isPublic={editIsPublic}
+                      setIsPublic={setEditIsPublic}
                     />
-                    <span className="inline-flex items-center gap-[4.5px]">
-                      {editIsPublic ? (
-                        <Eye size={11} strokeWidth={2.25} className="text-[color:var(--color-emerald-text)]" />
-                      ) : (
-                        <EyeOff size={11} strokeWidth={2.25} />
-                      )}
-                      Visible to requester by default
-                    </span>
-                  </label>
-                  <div className="flex items-center gap-[9px]">
-                    <button
-                      type="button"
-                      disabled={savingEdit || !editTitle.trim() || !editText.trim()}
-                      onClick={handleSaveEdit}
-                      className="inline-flex items-center gap-[6px] whitespace-nowrap rounded-full bg-admin-gradient px-[13.5px] py-[7.5px] text-[9.75px] font-semibold text-paper disabled:opacity-60"
-                    >
-                      <Check size={11} strokeWidth={2.5} />
-                      {savingEdit ? "Saving…" : "Save"}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={cancelEdit}
-                      className="inline-flex items-center gap-[4.5px] text-[9.75px] font-semibold text-muted hover:text-primary"
-                    >
-                      <X size={11} strokeWidth={2.5} />
-                      Cancel
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="flex flex-wrap items-start justify-between gap-[9px]">
-                    <div className="flex items-center gap-[7.5px]">
-                      <span className="text-[10.5px] font-semibold text-ink">{r.title}</span>
-                      <span
-                        className={`inline-flex items-center gap-[3px] rounded-full border px-[6px] py-[1.5px] text-[8px] font-semibold uppercase tracking-[0.04em] ${
-                          r.isPublic
-                            ? "border-[color:var(--color-emerald)]/30 bg-white text-[color:var(--color-emerald-text)]"
-                            : "border-card-border bg-white text-muted-2"
-                        }`}
-                      >
-                        {r.isPublic ? <Eye size={9} strokeWidth={2.5} /> : <EyeOff size={9} strokeWidth={2.5} />}
-                        {r.isPublic ? "Visible to requester" : "Internal"}
-                      </span>
-                    </div>
-                    <div className="flex items-center gap-[6px]">
+                    <div className="flex items-center justify-end gap-[8px]">
+                      <button type="button" onClick={cancelEdit} className={btnGhost}>
+                        Cancel
+                      </button>
                       <button
                         type="button"
-                        onClick={() => startEdit(r)}
-                        aria-label={`Edit ${r.title}`}
-                        className="flex h-[22px] w-[22px] items-center justify-center rounded-full text-faint hover:bg-result-bg hover:text-primary"
+                        disabled={savingEdit || !editTitle.trim() || !editText.trim()}
+                        onClick={handleSaveEdit}
+                        className={btnPrimary}
                       >
-                        <Pencil size={12} strokeWidth={2.25} />
+                        {savingEdit && <Loader2 size={14} strokeWidth={2} className="animate-spin" />}
+                        {savingEdit ? "Saving…" : "Save"}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-start gap-[12px] rounded-[10px] px-[14px] py-[12px] transition-colors duration-150 hover:bg-surface-2/50">
+                    <div className="flex min-w-0 flex-1 flex-col gap-[4px]">
+                      <div className="flex min-w-0 flex-wrap items-center gap-[8px]">
+                        <span className="truncate text-[13px] font-medium text-ink">{r.title}</span>
+                        <VisibilityTag isPublic={r.isPublic} />
+                      </div>
+                      <p className="line-clamp-2 whitespace-pre-wrap text-[13px] leading-[20px] text-muted-2" title={r.body}>
+                        {r.body}
+                      </p>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-[2px] opacity-0 transition-opacity duration-150 focus-within:opacity-100 group-hover/reply:opacity-100 [@media(hover:none)]:opacity-100">
+                      <button type="button" onClick={() => startEdit(r)} aria-label={`Edit ${r.title}`} className={iconBtn}>
+                        <Pencil size={14} strokeWidth={1.75} />
                       </button>
                       <button
                         type="button"
                         onClick={() => setPendingDelete(r)}
                         aria-label={`Delete ${r.title}`}
-                        className="flex h-[22px] w-[22px] items-center justify-center rounded-full text-faint hover:bg-result-bg hover:text-[color:var(--color-rose-text)]"
+                        className={`${iconBtn} hover:bg-rose-light hover:text-rose-text`}
                       >
-                        <Trash2 size={12} strokeWidth={2.25} />
+                        <Trash2 size={14} strokeWidth={1.75} />
                       </button>
                     </div>
                   </div>
-                  <p className="whitespace-pre-wrap text-[10.5px] leading-[1.5] text-muted">{r.body}</p>
-                </>
-              )}
-            </motion.div>
-          ))}
-        </AnimatePresence>
-        {responses.length === 0 && (
-          <p className="text-[10.5px] text-faint">No templates yet. Add one above to get started.</p>
-        )}
-      </div>
+                )}
+              </motion.li>
+            ))}
+          </AnimatePresence>
+        </ul>
+      )}
 
       <ConfirmDialog
         open={!!pendingDelete}
-        title="Delete this template?"
+        title="Delete this reply?"
         description={pendingDelete ? `"${pendingDelete.title}" will no longer be available to insert into replies.` : undefined}
         danger
         loading={deleting}
@@ -321,6 +318,6 @@ export default function CannedResponsesManager({
         onCancel={() => setPendingDelete(null)}
         onConfirm={handleDelete}
       />
-    </div>
+    </Panel>
   );
 }

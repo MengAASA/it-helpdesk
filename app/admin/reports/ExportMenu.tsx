@@ -88,9 +88,9 @@ export default function ExportMenu() {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-[6px] whitespace-nowrap rounded-full border border-card-border bg-white px-[13.5px] py-[8px] text-[9.75px] font-semibold text-ink shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-colors hover:border-primary/40 hover:text-primary"
+        className="inline-flex h-[32px] items-center gap-[8px] whitespace-nowrap rounded-[8px] border border-field-border bg-surface px-[12px] text-[13px] font-medium text-ink transition-colors hover:border-field-border-hover hover:bg-surface-2"
       >
-        <Download size={12} strokeWidth={2.25} />
+        <Download size={14} strokeWidth={2} />
         Export
       </button>
 
@@ -101,22 +101,22 @@ export default function ExportMenu() {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.16 }}
-            className="fixed inset-0 z-[60] flex items-center justify-center bg-[rgba(15,23,42,0.45)] px-[21px]"
+            className="fixed inset-0 z-[60] flex items-center justify-center bg-[rgba(15,23,42,0.45)] px-[16px]"
             onMouseDown={(e) => {
               if (e.target === e.currentTarget) setOpen(false);
             }}
           >
             <motion.div
-              initial={{ opacity: 0, scale: 0.94, y: 10 }}
+              initial={{ opacity: 0, scale: 0.97, y: 8 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.96, y: 6 }}
-              transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-              className="flex w-full max-w-[480px] flex-col gap-[15px] rounded-[14px] border border-card-border bg-white px-[21px] py-[19.5px] shadow-[0_24px_48px_rgba(15,23,42,0.25)]"
+              exit={{ opacity: 0, scale: 0.98, y: 4 }}
+              transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+              className="flex w-full max-w-[520px] flex-col gap-[16px] rounded-[16px] border border-card-border/60 bg-surface p-[20px] shadow-[0_24px_48px_rgba(15,23,42,0.25)]"
             >
               <div className="flex items-start justify-between gap-[12px]">
                 <div className="flex flex-col gap-[3px]">
-                  <span className="text-[12.75px] font-semibold text-ink">Export report</span>
-                  <p className="text-[10.5px] leading-[1.5] text-muted">
+                  <span className="text-[15px] font-semibold text-ink">Export report</span>
+                  <p className="text-[13px] leading-[1.5] text-muted-2">
                     One Excel file, one sheet per dataset you include below.
                   </p>
                 </div>
@@ -124,45 +124,45 @@ export default function ExportMenu() {
                   type="button"
                   onClick={() => setOpen(false)}
                   aria-label="Close"
-                  className="flex h-[24px] w-[24px] shrink-0 items-center justify-center rounded-full text-faint hover:bg-result-bg hover:text-ink"
+                  className="flex h-[28px] w-[28px] shrink-0 items-center justify-center rounded-[7px] text-faint transition-colors hover:bg-surface-2 hover:text-ink"
                 >
-                  <X size={14} strokeWidth={2.25} />
+                  <X size={16} strokeWidth={2} />
                 </button>
               </div>
 
-              <div className="flex max-h-[340px] flex-col gap-[7.5px] overflow-y-auto">
+              <div className="flex max-h-[380px] flex-col gap-[8px] overflow-y-auto">
                 {EXPORT_DATASETS.map((d) => {
                   const isIncluded = included[d.key];
                   const selectedForDataset = columns[d.key];
                   const isExpanded = expanded === d.key;
                   return (
-                    <div key={d.key} className="rounded-[10px] border border-card-border bg-paper">
-                      <div className="flex items-center gap-[9px] px-[10.5px] py-[9px]">
-                        <label className="flex flex-1 cursor-pointer items-center gap-[9px]">
+                    <div key={d.key} className="rounded-[12px] border border-card-border/60 bg-surface">
+                      <div className="flex items-center gap-[10px] px-[12px] py-[10px]">
+                        <label className="flex flex-1 cursor-pointer items-center gap-[10px]">
                           <span
                             onClick={() => toggleDataset(d.key)}
                             className={`flex h-[16px] w-[16px] shrink-0 items-center justify-center rounded-[4px] border transition-colors ${
                               isIncluded
-                                ? "border-[color:var(--color-blue)] bg-[color:var(--color-blue)] text-paper"
-                                : "border-card-border bg-white"
+                                ? "border-primary bg-primary text-white"
+                                : "border-field-border-hover bg-surface"
                             }`}
                           >
                             {isIncluded && <Check size={11} strokeWidth={3} />}
                           </span>
-                          <span className="flex flex-col gap-[1.5px]">
-                            <span className="text-[10.5px] font-semibold text-ink">{d.label}</span>
-                            <span className="text-[9px] text-faint">{d.description}</span>
+                          <span className="flex flex-col gap-[2px]">
+                            <span className="text-[13px] font-medium text-ink">{d.label}</span>
+                            <span className="text-[12px] text-muted-2">{d.description}</span>
                           </span>
                         </label>
                         <button
                           type="button"
                           onClick={() => setExpanded((prev) => (prev === d.key ? null : d.key))}
-                          className="inline-flex items-center gap-[3px] whitespace-nowrap text-[9px] font-semibold text-muted hover:text-primary"
+                          className="inline-flex h-[26px] items-center gap-[4px] whitespace-nowrap rounded-[6px] px-[6px] text-[12px] text-muted-2 transition-colors hover:bg-surface-2 hover:text-ink"
                         >
                           {selectedForDataset.length}/{d.columns.length} columns
                           <ChevronDown
-                            size={11}
-                            strokeWidth={2.25}
+                            size={14}
+                            strokeWidth={1.75}
                             className={`transition-transform ${isExpanded ? "rotate-180" : ""}`}
                           />
                         </button>
@@ -175,24 +175,24 @@ export default function ExportMenu() {
                             animate={{ height: "auto", opacity: 1 }}
                             exit={{ height: 0, opacity: 0 }}
                             transition={{ duration: 0.16, ease: [0.4, 0, 0.2, 1] }}
-                            className="overflow-hidden border-t border-card-border"
+                            className="overflow-hidden border-t border-card-border/60"
                           >
-                            <div className="grid grid-cols-2 gap-[4.5px] px-[10.5px] py-[9px]">
+                            <div className="grid grid-cols-2 gap-[4px] px-[10px] py-[8px]">
                               {d.columns.map((c) => {
                                 const checked = selectedForDataset.includes(c.key);
                                 return (
                                   <label
                                     key={c.key}
-                                    className="inline-flex cursor-pointer items-center gap-[6px] rounded-[6px] px-[6px] py-[4.5px] text-[9.75px] text-ink hover:bg-white"
+                                    className="inline-flex h-[28px] cursor-pointer items-center gap-[8px] rounded-[6px] px-[6px] text-[13px] text-ink transition-colors hover:bg-surface-2"
                                   >
                                     <span
-                                      className={`flex h-[13px] w-[13px] shrink-0 items-center justify-center rounded-[3px] border transition-colors ${
+                                      className={`flex h-[14px] w-[14px] shrink-0 items-center justify-center rounded-[4px] border transition-colors ${
                                         checked
-                                          ? "border-[color:var(--color-blue)] bg-[color:var(--color-blue)] text-paper"
-                                          : "border-card-border bg-white"
+                                          ? "border-primary bg-primary text-white"
+                                          : "border-field-border-hover bg-surface"
                                       }`}
                                     >
-                                      {checked && <Check size={9} strokeWidth={3} />}
+                                      {checked && <Check size={10} strokeWidth={3} />}
                                     </span>
                                     <input
                                       type="checkbox"
@@ -214,21 +214,21 @@ export default function ExportMenu() {
               </div>
 
               {error && (
-                <div className="flex items-center gap-[6px] text-[9px] font-medium text-amber-text-strong">
-                  <AlertTriangle size={11} strokeWidth={2.25} />
+                <div className="flex items-center gap-[6px] text-[13px] text-amber-text">
+                  <AlertTriangle size={14} strokeWidth={2} />
                   {error}
                 </div>
               )}
 
-              <div className="flex items-center justify-between gap-[9px] pt-[3px]">
-                <span className="text-[9px] text-faint">
+              <div className="flex items-center justify-between gap-[10px] pt-[4px]">
+                <span className="text-[12px] text-muted-2">
                   {includedCount} of {EXPORT_DATASETS.length} sheets selected
                 </span>
-                <div className="flex items-center gap-[9px]">
+                <div className="flex items-center gap-[8px]">
                   <button
                     type="button"
                     onClick={() => setOpen(false)}
-                    className="rounded-full border border-card-border bg-paper px-[15px] py-[7.5px] text-[9.75px] font-semibold text-muted hover:border-primary/40 hover:text-primary"
+                    className="h-[32px] rounded-[8px] border border-field-border bg-surface px-[12px] text-[13px] font-medium text-ink transition-colors hover:border-field-border-hover hover:bg-surface-2"
                   >
                     Cancel
                   </button>
@@ -236,9 +236,9 @@ export default function ExportMenu() {
                     type="button"
                     onClick={handleExport}
                     disabled={exporting || includedCount === 0}
-                    className="inline-flex items-center gap-[6px] whitespace-nowrap rounded-full bg-admin-gradient px-[15px] py-[7.5px] text-[9.75px] font-semibold text-paper disabled:opacity-60"
+                    className="inline-flex h-[32px] items-center gap-[8px] whitespace-nowrap rounded-[8px] bg-primary px-[12px] text-[13px] font-medium text-white transition-colors hover:bg-primary-hover disabled:opacity-60"
                   >
-                    <Download size={12} strokeWidth={2.25} />
+                    <Download size={14} strokeWidth={2} />
                     {exporting ? "Generating…" : "Export .xlsx"}
                   </button>
                 </div>

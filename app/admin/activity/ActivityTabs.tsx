@@ -2,78 +2,80 @@
 
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { History, ShieldCheck } from "lucide-react";
-import type { LucideIcon } from "lucide-react";
 
-const TABS: { key: "tickets" | "settings"; label: string; icon: LucideIcon }[] = [
-  { key: "tickets", label: "Tickets", icon: History },
-  { key: "settings", label: "Settings", icon: ShieldCheck },
+type TabKey = "tickets" | "settings";
+
+const TABS: { key: TabKey; label: string }[] = [
+  { key: "tickets", label: "Tickets" },
+  { key: "settings", label: "Settings" },
 ];
 
+/** Segmented switch between the two logs, matching the status tabs on the tickets list. */
 export default function ActivityTabs({
   tickets,
   settings,
+  counts,
 }: {
   tickets: React.ReactNode;
   settings: React.ReactNode;
+  counts: Record<TabKey, number>;
 }) {
   const panels = { tickets, settings };
-  const [active, setActive] = useState<"tickets" | "settings">("tickets");
-  const [direction, setDirection] = useState(1);
-
-  function selectTab(key: "tickets" | "settings") {
-    if (key === active) return;
-    const nextIndex = TABS.findIndex((t) => t.key === key);
-    const currentIndex = TABS.findIndex((t) => t.key === active);
-    setDirection(nextIndex > currentIndex ? 1 : -1);
-    setActive(key);
-  }
+  const [active, setActive] = useState<TabKey>("tickets");
 
   return (
-    <div className="flex flex-col gap-[15px]">
-      <nav className="flex w-fit items-center gap-[3px] rounded-[11px] border border-card-border bg-white p-[4px] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+    <div className="flex flex-col gap-[12px]">
+      <div
+        role="tablist"
+        aria-label="Activity log"
+        className="inline-flex h-[32px] w-fit items-center rounded-[9px] border border-field-border bg-surface-2 p-[2px]"
+      >
         {TABS.map((t) => {
-          const Icon = t.icon;
           const isActive = active === t.key;
           return (
             <button
               key={t.key}
               type="button"
-              onClick={() => selectTab(t.key)}
-              className={`relative inline-flex items-center gap-[7px] rounded-[8px] px-[13.5px] py-[7.5px] text-[10.5px] font-semibold transition-colors ${
-                isActive ? "text-paper" : "text-muted hover:bg-paper hover:text-ink"
+              role="tab"
+              id={`activity-tab-${t.key}`}
+              aria-selected={isActive}
+              aria-controls={`activity-panel-${t.key}`}
+              onClick={() => setActive(t.key)}
+              className={`relative flex h-[26px] items-center whitespace-nowrap rounded-[7px] px-[10px] text-[13px] transition-colors ${
+                isActive ? "text-ink" : "text-muted-2 hover:text-ink"
               }`}
             >
               {isActive && (
                 <motion.span
-                  layoutId="activity-tab-highlight"
+                  layoutId="activity-tab"
                   transition={{ type: "spring", stiffness: 420, damping: 34 }}
-                  className="absolute inset-0 rounded-[8px] bg-admin-gradient"
+                  className="absolute inset-0 rounded-[7px] bg-surface shadow-card"
                 />
               )}
-              <span className="relative inline-flex items-center gap-[7px]">
-                <Icon size={14} strokeWidth={2.25} />
+              <span className="relative flex items-center gap-[6px]">
                 {t.label}
+                <span className={`text-[12px] tabular-nums ${isActive ? "text-muted-2" : "text-faint"}`}>{counts[t.key]}</span>
               </span>
             </button>
           );
         })}
-      </nav>
-
-      <div className="relative overflow-hidden">
-        <AnimatePresence mode="popLayout" initial={false} custom={direction}>
-          <motion.div
-            key={active}
-            custom={direction}
-            initial={{ x: direction * 32, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            exit={{ x: direction * -32, opacity: 0 }}
-            transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
-          >
-            {panels[active]}
-          </motion.div>
-        </AnimatePresence>
       </div>
+
+      {/* A short fade only: no sliding, and no clipping wrapper that would cut off open menus. */}
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          key={active}
+          role="tabpanel"
+          id={`activity-panel-${active}`}
+          aria-labelledby={`activity-tab-${active}`}
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.16, ease: [0.22, 1, 0.36, 1] }}
+        >
+          {panels[active]}
+        </motion.div>
+      </AnimatePresence>
     </div>
   );
 }

@@ -47,7 +47,7 @@ export default async function UserPermissionsPage({
 
   return (
     <div className="flex flex-col gap-[21px]">
-      <div className="flex flex-wrap items-center justify-between gap-[15px] rounded-[14px] border border-card-border bg-white px-[18px] py-[15px] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+      <div className="flex flex-wrap items-center justify-between gap-[15px] rounded-[14px] border border-card-border bg-surface px-[18px] py-[15px] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
         <div className="flex items-center gap-[10.5px]">
           <Avatar name={user.name} size={36} />
           <div className="flex flex-col gap-[1.5px]">
@@ -101,7 +101,7 @@ function Field({
   capitalize?: boolean;
 }) {
   return (
-    <div className="flex flex-col gap-[6px] rounded-[12px] border border-card-border bg-white px-[13.5px] py-[12px] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+    <div className="flex flex-col gap-[6px] rounded-[12px] border border-card-border bg-surface px-[13.5px] py-[12px] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
       <span className="inline-flex items-center gap-[5.25px] text-[8.5px] font-semibold uppercase tracking-[0.06em] text-muted-2">
         <Icon size={11.5} strokeWidth={2.25} />
         {label}

@@ -123,7 +123,7 @@ export default function TicketReplyForm({ ticketNumber }: { ticketNumber: string
             {files.map((file, i) => (
               <li
                 key={`${file.name}-${i}`}
-                className="inline-flex items-center gap-[6px] rounded-full border border-card-border bg-white px-[9px] py-[4.5px] text-[9px] text-ink"
+                className="inline-flex items-center gap-[6px] rounded-full border border-card-border bg-surface px-[9px] py-[4.5px] text-[9px] text-ink"
               >
                 <Paperclip size={10} strokeWidth={2.25} className="text-faint" />
                 <span className="max-w-[150px] truncate">
@@ -175,7 +175,7 @@ export default function TicketReplyForm({ ticketNumber }: { ticketNumber: string
       <button
         type="submit"
         disabled={submitting || !message.trim()}
-        className="inline-flex w-fit items-center gap-[6px] self-end whitespace-nowrap rounded-full bg-admin-gradient px-[13.5px] py-[7.5px] text-[9.75px] font-semibold text-paper disabled:opacity-60"
+        className="inline-flex w-fit items-center gap-[6px] self-end whitespace-nowrap rounded-full bg-admin-gradient px-[13.5px] py-[7.5px] text-[9.75px] font-semibold text-white disabled:opacity-60"
       >
         <Send size={12} strokeWidth={2.25} />
         {submitting ? "Sending…" : "Send reply"}

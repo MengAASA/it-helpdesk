@@ -155,7 +155,7 @@ export default function PermissionsForm({
   }
 
   return (
-    <div className="flex flex-col gap-[15px] rounded-[14px] border border-card-border bg-white px-[18px] py-[16.5px] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
+    <div className="flex flex-col gap-[15px] rounded-[14px] border border-card-border bg-surface px-[18px] py-[16.5px] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
       <div className="flex flex-col gap-[9px] border-b border-divider pb-[15px]">
         <span className="inline-flex items-center gap-[6px] text-[9px] font-semibold uppercase tracking-[0.06em] text-muted-2">
           <Users2 size={11} strokeWidth={2.25} />
@@ -167,7 +167,7 @@ export default function PermissionsForm({
             onClick={() => setTeam(null)}
             className={`rounded-full border px-[10.5px] py-[5.25px] text-[9.75px] font-semibold transition-colors ${
               permissions.team === null
-                ? "border-card-border bg-ink text-paper"
+                ? "border-card-border bg-ink text-white"
                 : "border-card-border bg-paper text-muted hover:border-primary/40 hover:text-primary"
             }`}
           >
@@ -180,7 +180,7 @@ export default function PermissionsForm({
               onClick={() => setTeam(team)}
               className={`rounded-full border px-[10.5px] py-[5.25px] text-[9.75px] font-semibold transition-colors ${
                 permissions.team === team
-                  ? "border-[color:var(--color-violet)] bg-[color:var(--color-violet)] text-paper"
+                  ? "border-[color:var(--color-violet)] bg-[color:var(--color-violet)] text-white"
                   : "border-card-border bg-paper text-muted hover:border-primary/40 hover:text-primary"
               }`}
             >
@@ -219,7 +219,7 @@ export default function PermissionsForm({
                 }`}
               >
                 <span
-                  className="absolute top-[3px] left-[3px] h-[16px] w-[16px] rounded-full bg-white shadow-[0_1px_2px_rgba(15,23,42,0.25)] transition-transform"
+                  className="absolute top-[3px] left-[3px] h-[16px] w-[16px] rounded-full bg-surface shadow-[0_1px_2px_rgba(15,23,42,0.25)] transition-transform"
                   style={{ transform: enabled ? "translateX(16px)" : "translateX(0)" }}
                 />
               </button>
@@ -239,7 +239,7 @@ export default function PermissionsForm({
           type="button"
           onClick={() => setConfirmOpen(true)}
           disabled={saving || changes.length === 0}
-          className="inline-flex items-center gap-[6px] whitespace-nowrap rounded-full bg-admin-gradient px-[15px] py-[7.5px] text-[9.75px] font-semibold text-paper disabled:opacity-60"
+          className="inline-flex items-center gap-[6px] whitespace-nowrap rounded-full bg-admin-gradient px-[15px] py-[7.5px] text-[9.75px] font-semibold text-white disabled:opacity-60"
         >
           <Check size={12} strokeWidth={2.5} />
           {saving ? "Saving…" : "Save permissions"}

@@ -24,21 +24,21 @@ export default function NotFound() {
       <div className="flex flex-wrap items-center justify-center gap-[10.5px]">
         <Link
           href="/"
-          className="inline-flex items-center gap-[7.5px] whitespace-nowrap rounded-full bg-admin-gradient px-[19.5px] py-[9.75px] text-[10.5px] font-semibold text-paper shadow-[0_4px_12px_rgba(46,16,101,0.3)]"
+          className="inline-flex items-center gap-[7.5px] whitespace-nowrap rounded-full bg-admin-gradient px-[19.5px] py-[9.75px] text-[10.5px] font-semibold text-white shadow-[0_4px_12px_rgba(46,16,101,0.3)]"
         >
           <Home size={13} strokeWidth={2.25} />
           Back to home
         </Link>
         <Link
           href="/tickets"
-          className="inline-flex items-center gap-[7.5px] whitespace-nowrap rounded-full border border-card-border bg-white px-[19.5px] py-[9.75px] text-[10.5px] font-semibold text-ink hover:border-primary/40 hover:text-primary"
+          className="inline-flex items-center gap-[7.5px] whitespace-nowrap rounded-full border border-card-border bg-surface px-[19.5px] py-[9.75px] text-[10.5px] font-semibold text-ink hover:border-primary/40 hover:text-primary"
         >
           <Search size={13} strokeWidth={2.25} />
           Find a ticket
         </Link>
         <Link
           href="/submit"
-          className="inline-flex items-center gap-[7.5px] whitespace-nowrap rounded-full border border-card-border bg-white px-[19.5px] py-[9.75px] text-[10.5px] font-semibold text-ink hover:border-primary/40 hover:text-primary"
+          className="inline-flex items-center gap-[7.5px] whitespace-nowrap rounded-full border border-card-border bg-surface px-[19.5px] py-[9.75px] text-[10.5px] font-semibold text-ink hover:border-primary/40 hover:text-primary"
         >
           <FilePlus2 size={13} strokeWidth={2.25} />
           Submit a ticket

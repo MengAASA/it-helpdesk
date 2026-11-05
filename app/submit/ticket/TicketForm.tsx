@@ -262,7 +262,7 @@ function Dropdown({
       </label>
 
       {open && (
-        <div className="animate-phn-rise absolute z-20 mt-[6px] w-full overflow-hidden rounded-[10px] border border-card-border bg-white shadow-[0_10px_24px_rgba(15,23,42,0.14)]">
+        <div className="animate-phn-rise absolute z-20 mt-[6px] w-full overflow-hidden rounded-[10px] border border-card-border bg-surface shadow-[0_10px_24px_rgba(15,23,42,0.14)]">
           {searchable && (
             <div className="flex items-center gap-[7.5px] border-b border-divider px-[10.5px] py-[7.5px]">
               <Search size={12} strokeWidth={2.25} className="shrink-0 text-faint" />
@@ -553,14 +553,14 @@ function TicketForm({
           initial={{ opacity: 0, y: 16, scale: 0.96 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 0.4, ease: "easeOut" }}
-          className="w-full overflow-hidden rounded-[18px] border border-card-border bg-white shadow-[0_20px_44px_rgba(15,23,42,0.14)]"
+          className="w-full overflow-hidden rounded-[18px] border border-card-border bg-surface shadow-[0_20px_44px_rgba(15,23,42,0.14)]"
         >
-          <div className="flex flex-col items-center gap-[10.5px] bg-admin-gradient px-[27px] py-[28.5px] text-center text-paper">
+          <div className="flex flex-col items-center gap-[10.5px] bg-admin-gradient px-[27px] py-[28.5px] text-center text-white">
             <motion.span
               initial={{ opacity: 0, scale: 0.5 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.45, delay: 0.15, ease: [0.34, 1.56, 0.64, 1] }}
-              className="flex h-[48px] w-[48px] items-center justify-center rounded-full border border-paper/30 bg-paper/15"
+              className="flex h-[48px] w-[48px] items-center justify-center rounded-full border border-white/30 bg-white/15"
             >
               <CheckCircle2 size={24} strokeWidth={2} />
             </motion.span>
@@ -568,7 +568,7 @@ function TicketForm({
               <h1 className="font-heading text-[19.5px] font-semibold tracking-[-0.01em]">
                 Ticket submitted
               </h1>
-              <p className="max-w-[300px] text-[11.25px] leading-[1.6] text-paper/80">
+              <p className="max-w-[300px] text-[11.25px] leading-[1.6] text-white/80">
                 Routed to {team}. Updates go to {email}
               </p>
             </div>
@@ -626,13 +626,13 @@ function TicketForm({
           <div className="flex items-center gap-[10.5px] border-t border-divider bg-paper px-[27px] py-[16.5px]">
             <Link
               href="/submit"
-              className="inline-flex flex-1 items-center justify-center gap-[7.5px] whitespace-nowrap rounded-full bg-admin-gradient px-[16.5px] py-[9.75px] text-[10.5px] font-semibold text-paper shadow-[0_4px_12px_rgba(46,16,101,0.3)]"
+              className="inline-flex flex-1 items-center justify-center gap-[7.5px] whitespace-nowrap rounded-full bg-admin-gradient px-[16.5px] py-[9.75px] text-[10.5px] font-semibold text-white shadow-[0_4px_12px_rgba(46,16,101,0.3)]"
             >
               Submit another
             </Link>
             <Link
               href="/tickets"
-              className="inline-flex flex-1 items-center justify-center gap-[7.5px] whitespace-nowrap rounded-full border border-card-border bg-white px-[16.5px] py-[9.75px] text-[10.5px] font-semibold text-ink hover:border-primary/40 hover:text-primary"
+              className="inline-flex flex-1 items-center justify-center gap-[7.5px] whitespace-nowrap rounded-full border border-card-border bg-surface px-[16.5px] py-[9.75px] text-[10.5px] font-semibold text-ink hover:border-primary/40 hover:text-primary"
             >
               Track this ticket
             </Link>
@@ -667,7 +667,7 @@ function TicketForm({
         ref={formRef}
         onSubmit={handleSubmit}
         noValidate
-        className="flex flex-col divide-y divide-divider overflow-hidden rounded-[10.5px] border border-card-border bg-white"
+        className="flex flex-col divide-y divide-divider overflow-hidden rounded-[10.5px] border border-card-border bg-surface"
       >
         {attempted && missing.length > 0 && (
           <div className="border-b border-[color:var(--color-rose)]/25 bg-[color:var(--color-rose-light)] px-[21px] py-[10.5px] text-[9.75px] font-medium text-[color:var(--color-rose-text)]">
@@ -756,7 +756,7 @@ function TicketForm({
               handleFiles(e.target.files);
               e.target.value = "";
             }}
-            className="text-[10.5px] text-ink file:mr-[9px] file:rounded-[6px] file:border-0 file:bg-ink file:px-[10.5px] file:py-[6px] file:text-[9.75px] file:font-semibold file:text-paper hover:file:bg-primary"
+            className="text-[10.5px] text-ink file:mr-[9px] file:rounded-[6px] file:border-0 file:bg-ink file:px-[10.5px] file:py-[6px] file:text-[9.75px] file:font-semibold file:text-white hover:file:bg-primary"
           />
           <span className="text-[9px] text-faint">
             PDF, Word, Excel, images, text or zip (up to {MAX_FILES} files, 5MB each).
@@ -769,7 +769,7 @@ function TicketForm({
               {files.map((file, i) => (
                 <li
                   key={`${file.name}-${i}`}
-                  className="inline-flex items-center gap-[7.5px] rounded-full border border-card-border bg-white px-[10.5px] py-[6px] text-[9.75px] text-ink shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
+                  className="inline-flex items-center gap-[7.5px] rounded-full border border-card-border bg-surface px-[10.5px] py-[6px] text-[9.75px] text-ink shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
                 >
                   <Paperclip size={11} strokeWidth={2.25} className="text-faint" />
                   <span className="truncate">
@@ -801,14 +801,14 @@ function TicketForm({
             ref={submitButtonRef}
             type="submit"
             disabled={verifying}
-            className="inline-flex w-fit items-center gap-[7.5px] whitespace-nowrap rounded-full bg-admin-gradient px-[19.5px] py-[9.75px] text-[10.5px] font-semibold text-paper shadow-[0_4px_12px_rgba(46,16,101,0.3)] transition-transform hover:-translate-y-[1px] disabled:opacity-60 disabled:hover:translate-y-0"
+            className="inline-flex w-fit items-center gap-[7.5px] whitespace-nowrap rounded-full bg-admin-gradient px-[19.5px] py-[9.75px] text-[10.5px] font-semibold text-white shadow-[0_4px_12px_rgba(46,16,101,0.3)] transition-transform hover:-translate-y-[1px] disabled:opacity-60 disabled:hover:translate-y-0"
           >
             {verifying ? "Verifying…" : "Submit ticket"} <ArrowRight size={14} strokeWidth={2.5} />
           </button>
         </div>
       </form>
 
-      <div className="flex flex-col gap-[16.5px] rounded-[14px] border border-card-border bg-white px-[21px] py-[19.5px] shadow-[0_1px_2px_rgba(15,23,42,0.04)] lg:sticky lg:top-[84px]">
+      <div className="flex flex-col gap-[16.5px] rounded-[14px] border border-card-border bg-surface px-[21px] py-[19.5px] shadow-[0_1px_2px_rgba(15,23,42,0.04)] lg:sticky lg:top-[84px]">
         <div className="flex items-start gap-[10.5px]">
           <span className="flex h-[33px] w-[33px] shrink-0 items-center justify-center rounded-[9px] bg-result-bg text-primary">
             <ListChecks size={15} strokeWidth={2} />

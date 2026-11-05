@@ -36,14 +36,14 @@ export default function ErrorPage({
         <button
           type="button"
           onClick={() => retry()}
-          className="inline-flex items-center gap-[7.5px] whitespace-nowrap rounded-full bg-admin-gradient px-[19.5px] py-[9.75px] text-[10.5px] font-semibold text-paper shadow-[0_4px_12px_rgba(46,16,101,0.3)]"
+          className="inline-flex items-center gap-[7.5px] whitespace-nowrap rounded-full bg-admin-gradient px-[19.5px] py-[9.75px] text-[10.5px] font-semibold text-white shadow-[0_4px_12px_rgba(46,16,101,0.3)]"
         >
           <RotateCcw size={13} strokeWidth={2.25} />
           Try again
         </button>
         <Link
           href="/"
-          className="inline-flex items-center gap-[7.5px] whitespace-nowrap rounded-full border border-card-border bg-white px-[19.5px] py-[9.75px] text-[10.5px] font-semibold text-ink hover:border-primary/40 hover:text-primary"
+          className="inline-flex items-center gap-[7.5px] whitespace-nowrap rounded-full border border-card-border bg-surface px-[19.5px] py-[9.75px] text-[10.5px] font-semibold text-ink hover:border-primary/40 hover:text-primary"
         >
           <Home size={13} strokeWidth={2.25} />
           Back to home

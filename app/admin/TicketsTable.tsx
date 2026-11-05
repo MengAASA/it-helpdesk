@@ -7,20 +7,15 @@ import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Search,
-  ArrowUp,
-  ArrowDown,
-  ChevronsUpDown,
-  SlidersHorizontal,
-  TimerReset,
-  AlertTriangle,
-  ChevronLeft,
-  ChevronRight,
+  ChevronDown,
   Loader2,
   AlertCircle,
   Check,
   X,
   RefreshCw,
   Download,
+  TimerReset,
+  UserRound,
 } from "lucide-react";
 import type { tickets as TicketRow } from "@prisma/client";
 import { isOverdue, isAtRisk, type SlaHours } from "@/app/lib/sla";
@@ -28,36 +23,26 @@ import { csvEscape } from "@/app/lib/csv";
 import Avatar from "@/app/components/Avatar";
 import FilterDropdown from "@/app/components/FilterDropdown";
 import ConfirmDialog from "@/app/components/ConfirmDialog";
+import { StatusDot, OverdueBadge, AtRiskBadge, PriorityBadge, PriorityDot } from "@/app/components/TicketBadges";
+import { useDismiss } from "@/app/components/useDismiss";
 import AssigneeLookup, { type AssigneeOption } from "./tickets/[ticketNumber]/AssigneeLookup";
+import { SortHeader, Pagination } from "./listParts";
+import { TEAM_DOT, teamShort } from "./teamStyle";
 
 const BULK_STATUSES = ["Open", "In Progress", "Closed"] as const;
 const BULK_PRIORITIES = ["High", "Normal", "Low"] as const;
 const BULK_CHUNK_SIZE = 100;
 const NEW_DATA_POLL_MS = 30_000;
+const EASE_OUT = [0.22, 1, 0.36, 1] as const;
+
+/** Status tabs follow the ticket lifecycle rather than the alphabet. */
+const STATUS_ORDER = ["Open", "In Progress", "Closed"];
 
 function chunk<T>(arr: T[], size: number): T[][] {
   const out: T[][] = [];
   for (let i = 0; i < arr.length; i += size) out.push(arr.slice(i, i + size));
   return out;
 }
-
-const STATUS_STYLES: Record<string, string> = {
-  Open: "border-[color:var(--color-blue)]/25 bg-[color:var(--color-blue-light)] text-[color:var(--color-blue-text)]",
-  "In Progress": "border-amber-border bg-amber-bg text-amber-text-strong",
-  Closed: "border-[color:var(--color-emerald)]/25 bg-[color:var(--color-emerald-light)] text-[color:var(--color-emerald-text)]",
-};
-
-const PRIORITY_STYLES: Record<string, string> = {
-  High: "border-[color:var(--color-rose)]/25 bg-[color:var(--color-rose-light)] text-[color:var(--color-rose-text)]",
-  Normal: "border-pill-border bg-pill-bg text-pill-text",
-  Low: "border-[color:var(--color-emerald)]/25 bg-[color:var(--color-emerald-light)] text-[color:var(--color-emerald-text)]",
-};
-
-const PRIORITY_BAR: Record<string, string> = {
-  High: "border-l-[color:var(--color-rose)]",
-  Normal: "border-l-[color:var(--color-blue)]/40",
-  Low: "border-l-[color:var(--color-emerald)]/40",
-};
 
 export type SortKey =
   | "ticket_number"
@@ -82,17 +67,26 @@ export const SORT_KEYS: readonly SortKey[] = [
   "priority",
 ];
 
-const COLUMNS: { key: SortKey; label: string }[] = [
-  { key: "ticket_number", label: "Ticket #" },
-  { key: "subject", label: "Subject" },
-  { key: "name", label: "Requester" },
-  { key: "category", label: "Category" },
-  { key: "team", label: "Team" },
-  { key: "assigned_to", label: "Assigned" },
-  { key: "status", label: "Status" },
-  { key: "created_at", label: "Submitted" },
-  { key: "priority", label: "Priority" },
-];
+/**
+ * Column slots shared by the header and every row, so they line up, with a divider between each.
+ * Each secondary column only appears once the list card is wide enough for it (container
+ * queries), which is what keeps the list free of horizontal scrolling at any screen or sidebar
+ * width. Widths include the divider's padding.
+ */
+// Ten-pixel gaps and dividers (a touch tighter than the other admin lists) so all eight columns
+// fit beside an open sidebar on a 1440px screen.
+const SEP = "border-l border-card-border pl-[10px]";
+const COL = {
+  id: "hidden w-[168px] shrink-0 items-center whitespace-nowrap @min-[600px]:flex",
+  // The divider before the issue only shows while the ID column sits to its left.
+  issue: "flex min-w-0 flex-1 items-center gap-[8px] @min-[600px]:border-l @min-[600px]:border-card-border @min-[600px]:pl-[10px]",
+  createdBy: `hidden w-[120px] shrink-0 items-center @min-[1000px]:flex ${SEP}`,
+  team: `hidden w-[104px] shrink-0 items-center gap-[8px] @min-[1100px]:flex ${SEP}`,
+  priority: `hidden w-[94px] shrink-0 items-center @min-[700px]:flex ${SEP}`,
+  status: `hidden w-[104px] shrink-0 items-center gap-[8px] @min-[480px]:flex ${SEP}`,
+  assignee: `hidden w-[140px] shrink-0 items-center gap-[8px] @min-[800px]:flex ${SEP}`,
+  created: `hidden w-[92px] shrink-0 items-center whitespace-nowrap @min-[900px]:flex ${SEP}`,
+} as const;
 
 const UNASSIGNED = "Unassigned";
 const PAGE_SIZE = 30;
@@ -114,7 +108,13 @@ const SEARCH_FIELDS = [
   "phone",
 ] as const satisfies readonly (keyof TicketRow)[];
 
-type TicketWithLabel = TicketRow & { submittedLabel: string };
+type TicketWithLabel = TicketRow & {
+  /** Full timestamp, used for the CSV export and the tooltip. */
+  submittedLabel: string;
+  /** "10 Sep 2026" and "14:32", formatted on the server so server and client render the same text. */
+  createdDate: string;
+  createdTime: string;
+};
 
 const EXPORT_COLUMNS: { key: keyof TicketWithLabel; header: string }[] = [
   { key: "ticket_number", header: "Ticket Number" },
@@ -201,7 +201,10 @@ export default function TicketsTable({
   });
   const [page, setPage] = useState(initialFilters?.page ?? 1);
 
-  const statuses = useMemo(() => uniqueSorted(tickets.map((t) => t.status)), [tickets]);
+  const statuses = useMemo(() => {
+    const present = uniqueSorted(tickets.map((t) => t.status));
+    return [...STATUS_ORDER.filter((s) => present.includes(s)), ...present.filter((s) => !STATUS_ORDER.includes(s))];
+  }, [tickets]);
   const priorities = useMemo(() => uniqueSorted(tickets.map((t) => t.priority)), [tickets]);
   const teams = useMemo(() => uniqueSorted(tickets.map((t) => t.team)), [tickets]);
   const categories = useMemo(() => uniqueSorted(tickets.map((t) => t.category)), [tickets]);
@@ -211,26 +214,41 @@ export default function TicketsTable({
   );
 
   function toggleSort(key: SortKey) {
+    // Clicking the sorted column flips it; a new column starts newest-first for dates, A to Z otherwise.
     setSort((prev) =>
       prev.key === key
         ? { key, direction: prev.direction === "asc" ? "desc" : "asc" }
-        : { key, direction: "asc" }
+        : { key, direction: key === "created_at" ? "desc" : "asc" }
     );
   }
 
-  const filtered = useMemo(() => {
+  // Every filter except status, so the status tabs can show how many tickets each one would leave.
+  const matchingExceptStatus = useMemo(() => {
     const q = search.trim().toLowerCase();
+    const qCompact = q.replace(/[\s-]/g, "");
     return tickets.filter((t) => {
-      if (statusFilter !== "All" && t.status !== statusFilter) return false;
       if (priorityFilter !== "All" && t.priority !== priorityFilter) return false;
       if (teamFilter !== "All" && t.team !== teamFilter) return false;
       if (categoryFilter !== "All" && t.category !== categoryFilter) return false;
       if (assigneeFilter !== "All" && (t.assigned_to || UNASSIGNED) !== assigneeFilter) return false;
       if (overdueOnly && slaHours.enabled && !isOverdue(t, slaHours)) return false;
       if (!q) return true;
+      // Ticket IDs also match without their dashes or spaces: "7k3f9q2m" finds TCK-7K3F-9Q2M.
+      if (qCompact && t.ticket_number.toLowerCase().replace(/-/g, "").includes(qCompact)) return true;
       return SEARCH_FIELDS.some((field) => String(t[field] ?? "").toLowerCase().includes(q));
     });
-  }, [tickets, search, statusFilter, priorityFilter, teamFilter, categoryFilter, assigneeFilter, overdueOnly, slaHours]);
+  }, [tickets, search, priorityFilter, teamFilter, categoryFilter, assigneeFilter, overdueOnly, slaHours]);
+
+  const statusCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const t of matchingExceptStatus) counts.set(t.status, (counts.get(t.status) ?? 0) + 1);
+    return counts;
+  }, [matchingExceptStatus]);
+
+  const filtered = useMemo(
+    () => (statusFilter === "All" ? matchingExceptStatus : matchingExceptStatus.filter((t) => t.status === statusFilter)),
+    [matchingExceptStatus, statusFilter]
+  );
 
   const sorted = useMemo(() => {
     const rows = [...filtered];
@@ -255,6 +273,20 @@ export default function TicketsTable({
     setSelected(new Set());
     setSelectAllMatching(false);
     setBulkResult(null);
+  }
+
+  const hasFilters =
+    search.trim() !== "" ||
+    [priorityFilter, teamFilter, categoryFilter, assigneeFilter].some((v) => v !== "All") ||
+    overdueOnly;
+
+  function clearFilters() {
+    setSearch("");
+    setPriorityFilter("All");
+    setTeamFilter("All");
+    setCategoryFilter("All");
+    setAssigneeFilter("All");
+    setOverdueOnly(false);
   }
 
   const totalPages = Math.max(1, Math.ceil(sorted.length / PAGE_SIZE));
@@ -419,41 +451,45 @@ export default function TicketsTable({
     }
   }
 
+  const bulkBarOpen = canManage && selectionCount > 0;
+
   return (
-    <div className="flex flex-col gap-[12px]">
+    // While the bulk bar floats at the bottom, leave room so it never covers the last rows.
+    <div className={`flex flex-col gap-[12px] ${bulkBarOpen ? "pb-[64px]" : ""}`}>
       {mounted &&
         createPortal(
           <AnimatePresence>
             {hasNewData && (
               <motion.div
-                initial={{ opacity: 0, y: 16, scale: 0.96 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 16, scale: 0.96 }}
-                transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-                className="fixed bottom-[22px] right-[22px] z-50 flex w-[300px] items-start gap-[10.5px] rounded-[12px] border border-card-border bg-white px-[15px] py-[13.5px] shadow-[0_10px_28px_rgba(15,23,42,0.18)]"
+                role="status"
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 12 }}
+                transition={{ duration: 0.22, ease: EASE_OUT }}
+                className={`fixed right-[20px] z-50 flex w-[300px] items-start gap-[10px] rounded-[12px] border border-card-border bg-surface p-[12px] shadow-pop ${
+                  bulkBarOpen ? "bottom-[84px]" : "bottom-[20px]"
+                }`}
               >
-                <span className="mt-[1.5px] flex h-[24px] w-[24px] shrink-0 items-center justify-center rounded-[7px] bg-result-bg text-primary">
-                  <RefreshCw size={12} strokeWidth={2.25} />
+                <span className="flex h-[28px] w-[28px] shrink-0 items-center justify-center rounded-[8px] bg-primary-soft text-primary">
+                  <RefreshCw size={14} strokeWidth={2} />
                 </span>
-                <div className="flex flex-1 flex-col gap-[7.5px]">
-                  <span className="text-[10.5px] leading-[1.4] text-ink">
-                    New tickets or updates are available.
-                  </span>
+                <div className="flex flex-1 flex-col items-start gap-[8px]">
+                  <span className="text-[13px] text-ink">New tickets or updates are available.</span>
                   <button
                     type="button"
                     onClick={refreshForNewData}
-                    className="w-fit rounded-full bg-admin-gradient px-[12px] py-[5.25px] text-[9.75px] font-semibold text-paper"
+                    className="h-[28px] rounded-[7px] bg-primary px-[10px] text-[12px] font-medium text-white transition-colors hover:bg-primary-hover"
                   >
-                    Refresh
+                    Refresh list
                   </button>
                 </div>
                 <button
                   type="button"
                   onClick={() => setHasNewData(false)}
-                  className="text-faint hover:text-muted"
+                  className="flex h-[24px] w-[24px] items-center justify-center rounded-[6px] text-faint transition-colors hover:bg-surface-2 hover:text-ink"
                   aria-label="Dismiss"
                 >
-                  <X size={13} strokeWidth={2.5} />
+                  <X size={14} strokeWidth={2} />
                 </button>
               </motion.div>
             )}
@@ -461,139 +497,93 @@ export default function TicketsTable({
           document.body
         )}
 
-      <div className="flex flex-wrap items-center gap-[9px] rounded-[12px] border border-card-border bg-white px-[13.5px] py-[12px] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-        <div className="relative min-w-[220px] flex-1">
-          <Search
-            size={14}
-            strokeWidth={2.25}
-            className="pointer-events-none absolute left-[11px] top-1/2 -translate-y-1/2 text-faint"
-          />
+      {/* Toolbar: status tabs and view controls, then search and filters. */}
+      <div className="flex flex-wrap items-center justify-between gap-[10px]">
+        <StatusTabs
+          statuses={statuses}
+          counts={statusCounts}
+          total={matchingExceptStatus.length}
+          value={statusFilter}
+          onChange={setStatusFilter}
+        />
+        <div className="flex items-center gap-[8px]">
+          <button
+            type="button"
+            onClick={exportCsv}
+            disabled={sorted.length === 0}
+            title={`Export ${sorted.length} ticket${sorted.length === 1 ? "" : "s"} to CSV`}
+            className="inline-flex h-[30px] items-center gap-[6px] whitespace-nowrap rounded-[8px] border border-field-border hover:border-field-border-hover bg-surface px-[10px] text-[13px] text-muted transition-colors hover:bg-surface-2 hover:text-ink disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Download size={14} strokeWidth={1.75} />
+            Export
+          </button>
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-[8px]">
+        <div className="relative w-full sm:w-[260px]">
+          <Search size={14} strokeWidth={1.75} className="pointer-events-none absolute left-[10px] top-1/2 -translate-y-1/2 text-faint" />
           <input
-            type="text"
+            type="search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search tickets by any field…"
-            className="w-full rounded-full border border-card-border bg-paper py-[8.25px] pl-[32px] pr-[12px] text-[10.5px] text-ink outline-none focus:border-[color:var(--color-blue)]"
+            placeholder="Search ID, subject, requester…"
+            aria-label="Filter tickets"
+            className="h-[30px] w-full rounded-[8px] border border-field-border hover:border-field-border-hover bg-surface pl-[30px] pr-[10px] text-[13px] text-ink placeholder:text-faint outline-none"
           />
         </div>
-        <span className="inline-flex items-center gap-[4.5px] text-[9px] font-semibold uppercase tracking-[0.06em] text-muted-2">
-          <SlidersHorizontal size={12} strokeWidth={2.25} />
-          Filters
-        </span>
-        <FilterDropdown label="Status" value={statusFilter} onChange={setStatusFilter} options={statuses} />
         <FilterDropdown label="Priority" value={priorityFilter} onChange={setPriorityFilter} options={priorities} />
-        <FilterDropdown label="Team" value={teamFilter} onChange={setTeamFilter} options={teams} />
+        <FilterDropdown label="Team" value={teamFilter} onChange={setTeamFilter} options={teams} optionLabel={teamShort} />
         <FilterDropdown label="Category" value={categoryFilter} onChange={setCategoryFilter} options={categories} />
-        <FilterDropdown label="Assigned" value={assigneeFilter} onChange={setAssigneeFilter} options={assignees} />
+        <FilterDropdown label="Assignee" value={assigneeFilter} onChange={setAssigneeFilter} options={assignees} />
         {slaHours.enabled && (
           <button
             type="button"
             onClick={() => setOverdueOnly((v) => !v)}
             aria-pressed={overdueOnly}
-            className={`inline-flex items-center gap-[4.5px] rounded-full border px-[10.5px] py-[6px] text-[9.75px] font-semibold transition-colors ${
+            className={`inline-flex h-[30px] items-center gap-[6px] rounded-[8px] border px-[10px] text-[13px] transition-colors ${
               overdueOnly
-                ? "border-amber-border bg-amber-bg text-amber-text-strong"
-                : "border-card-border bg-white text-muted hover:border-primary/40 hover:text-primary"
+                ? "border-rose/25 bg-rose-light text-rose-text"
+                : "border-field-border bg-surface hover:border-field-border-hover text-muted hover:bg-surface-2 hover:text-ink"
             }`}
           >
-            <TimerReset size={11} strokeWidth={2.5} />
+            <TimerReset size={14} strokeWidth={1.75} />
             Overdue only
+          </button>
+        )}
+        {hasFilters && (
+          <button
+            type="button"
+            onClick={clearFilters}
+            className="inline-flex h-[30px] items-center gap-[4px] rounded-[8px] px-[8px] text-[13px] text-muted-2 transition-colors hover:bg-surface-2 hover:text-ink"
+          >
+            <X size={14} strokeWidth={1.75} />
+            Clear
           </button>
         )}
       </div>
 
-      {canManage && selectionCount > 0 && (
-        <div className="flex flex-wrap items-center gap-[9px] rounded-[12px] border border-card-border bg-white px-[13.5px] py-[10.5px] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-          <span className="text-[9.75px] font-semibold text-ink">
-            {selectionCount} selected
-          </span>
-          <button
-            type="button"
-            onClick={clearSelection}
-            className="inline-flex items-center gap-[3px] text-[9px] font-semibold text-muted hover:text-primary"
-          >
-            <X size={10} strokeWidth={2.5} />
-            Clear selection
-          </button>
-          <span className="mx-[3px] h-[15px] w-px bg-divider" />
-          <span className="text-[9px] font-semibold uppercase tracking-[0.05em] text-muted-2">Set status</span>
-          {BULK_STATUSES.map((s) => (
-            <button
-              key={s}
-              type="button"
-              disabled={applying}
-              onClick={() => setPendingAction({ type: "status", status: s })}
-              className="rounded-full border border-card-border bg-paper px-[10.5px] py-[5.25px] text-[9.75px] font-semibold text-muted transition-colors hover:border-primary/40 hover:text-primary disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {s}
-            </button>
-          ))}
-          <span className="mx-[3px] h-[15px] w-px bg-divider" />
-          <span className="text-[9px] font-semibold uppercase tracking-[0.05em] text-muted-2">Set priority</span>
-          {BULK_PRIORITIES.map((p) => (
-            <button
-              key={p}
-              type="button"
-              disabled={applying}
-              onClick={() => setPendingAction({ type: "priority", priority: p })}
-              className="rounded-full border border-card-border bg-paper px-[10.5px] py-[5.25px] text-[9.75px] font-semibold text-muted transition-colors hover:border-primary/40 hover:text-primary disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {p}
-            </button>
-          ))}
-          <span className="mx-[3px] h-[15px] w-px bg-divider" />
-          <span className="text-[9px] font-semibold uppercase tracking-[0.05em] text-muted-2">Assign to</span>
-          <div className="flex min-w-[180px] items-center gap-[6px]">
-            <AssigneeLookup value={bulkAssignee} onChange={setBulkAssignee} options={assigneeOptions} disabled={applying} />
-            <button
-              type="button"
-              disabled={applying}
-              onClick={() => setPendingAction({ type: "assign", assignedTo: bulkAssignee })}
-              className="inline-flex shrink-0 items-center gap-[4.5px] whitespace-nowrap rounded-[7.5px] bg-ink px-[10.5px] py-[6px] text-[9.75px] font-semibold text-paper transition-colors hover:bg-primary disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              <Check size={11} strokeWidth={2.5} />
-              Apply
-            </button>
-          </div>
-          {applying && (
-            <span className="inline-flex items-center gap-[4.5px] text-[9px] font-medium text-muted-2">
-              <Loader2 size={10.5} strokeWidth={2.5} className="animate-spin" />
-              Applying…
-            </span>
-          )}
-        </div>
-      )}
-
       {canManage && showSelectAllBanner && (
-        <div className="flex flex-wrap items-center gap-[6px] rounded-[10px] border border-[color:var(--color-blue)]/25 bg-[color:var(--color-blue-light)] px-[13.5px] py-[9px] text-[9.75px] text-[color:var(--color-blue-text)]">
-          <span>
-            All {paginated.length} tickets on this page are selected.
-          </span>
-          <button
-            type="button"
-            onClick={() => setSelectAllMatching(true)}
-            className="font-semibold underline underline-offset-2 hover:no-underline"
-          >
-            Select all {sorted.length} tickets matching your filters
+        <div className="flex flex-wrap items-center gap-[6px] rounded-[10px] bg-primary-soft px-[12px] py-[8px] text-[13px] text-ink">
+          <span>All {paginated.length} tickets on this page are selected.</span>
+          <button type="button" onClick={() => setSelectAllMatching(true)} className="font-medium text-primary hover:underline">
+            Select all {sorted.length} matching tickets
           </button>
         </div>
       )}
 
       {bulkResult && (
         <div
-          className={`inline-flex w-fit items-center gap-[6px] rounded-full border px-[10.5px] py-[5.25px] text-[9.75px] font-semibold ${
+          role="status"
+          className={`inline-flex h-[28px] w-fit items-center gap-[6px] rounded-[8px] px-[10px] text-[12px] font-medium ${
             bulkResult.kind === "success"
-              ? "border-[color:var(--color-emerald)]/25 bg-[color:var(--color-emerald-light)] text-[color:var(--color-emerald-text)]"
+              ? "bg-emerald-light text-emerald-text"
               : bulkResult.kind === "partial"
-              ? "border-amber-border bg-amber-bg text-amber-text-strong"
-              : "border-[color:var(--color-rose)]/25 bg-[color:var(--color-rose-light)] text-[color:var(--color-rose-text)]"
+              ? "bg-amber-bg text-amber-text"
+              : "bg-rose-light text-rose-text"
           }`}
         >
-          {bulkResult.kind === "error" ? (
-            <AlertCircle size={11} strokeWidth={2.5} />
-          ) : (
-            <Check size={11} strokeWidth={2.5} />
-          )}
+          {bulkResult.kind === "error" ? <AlertCircle size={14} strokeWidth={2} /> : <Check size={14} strokeWidth={2} />}
           {bulkResult.kind === "success" && `Updated ${bulkResult.updated} ticket${bulkResult.updated === 1 ? "" : "s"}`}
           {bulkResult.kind === "partial" &&
             `Updated ${bulkResult.updated} ticket${bulkResult.updated === 1 ? "" : "s"}; ${bulkResult.notFoundCount} no longer exist${bulkResult.notFoundCount === 1 ? "s" : ""}`}
@@ -621,239 +611,397 @@ export default function TicketsTable({
         onCancel={() => !applying && setPendingAction(null)}
       />
 
-      <div className="flex flex-wrap items-center justify-between gap-[9px]">
-        <span className="text-[9px] text-faint">
-          Showing {rangeStart}–{rangeEnd} of {sorted.length} tickets
-        </span>
-        <button
-          type="button"
-          onClick={exportCsv}
-          disabled={sorted.length === 0}
-          className="inline-flex items-center gap-[6px] whitespace-nowrap rounded-full border border-card-border bg-white px-[10.5px] py-[6px] text-[9px] font-semibold text-ink shadow-[0_1px_2px_rgba(15,23,42,0.04)] transition-colors hover:border-primary/40 hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
-        >
-          <Download size={11} strokeWidth={2.25} />
-          Export {sorted.length} ticket{sorted.length === 1 ? "" : "s"} to CSV
-        </button>
-      </div>
+      {/*
+        A list laid out like a table: every column has a fixed slot and a divider, and the secondary
+        ones only appear once the card is wide enough (container queries), so nothing ever needs a
+        horizontal scrollbar.
+      */}
+      <section aria-label="Tickets" className="@container rounded-[16px] border border-card-border/50 bg-surface px-[6px] pb-[6px]">
+        {/* Column headers double as the sort controls. */}
+        <div className="flex h-[40px] items-stretch gap-[10px] border-b border-card-border px-[10px] text-[12px] font-medium text-muted-2">
+          {canManage && (
+            <span className="flex shrink-0 items-center">
+              <input
+                ref={headerCheckboxRef}
+                type="checkbox"
+                checked={headerChecked}
+                onChange={toggleSelectPage}
+                disabled={paginated.length === 0}
+                className="h-[14px] w-[14px] accent-primary"
+                aria-label="Select all tickets on this page"
+              />
+            </span>
+          )}
+          <SortHeader label="Ticket ID" sortKey="ticket_number" sort={sort} onSort={toggleSort} className={COL.id} />
+          <SortHeader label="Issue" sortKey="subject" sort={sort} onSort={toggleSort} className={COL.issue} />
+          <SortHeader label="Created by" sortKey="name" sort={sort} onSort={toggleSort} className={COL.createdBy} />
+          <SortHeader label="Team" sortKey="team" sort={sort} onSort={toggleSort} className={COL.team} />
+          <SortHeader label="Priority" sortKey="priority" sort={sort} onSort={toggleSort} className={COL.priority} />
+          <SortHeader label="Status" sortKey="status" sort={sort} onSort={toggleSort} className={COL.status} />
+          <SortHeader label="Assignee" sortKey="assigned_to" sort={sort} onSort={toggleSort} className={COL.assignee} />
+          <SortHeader label="Created at" sortKey="created_at" sort={sort} onSort={toggleSort} className={COL.created} />
+        </div>
 
-      <div className="overflow-x-auto rounded-[12px] border border-card-border shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-        <table className="w-full min-w-[900px] border-collapse text-left text-[10.5px]">
-          <thead>
-            <tr className="border-b border-card-border bg-result-bg/50 text-[9px] uppercase tracking-[0.06em] text-muted-2">
-              {canManage && (
-                <th className="px-[15px] py-[10.5px]">
-                  <input
-                    ref={headerCheckboxRef}
-                    type="checkbox"
-                    checked={headerChecked}
-                    onChange={toggleSelectPage}
-                    className="h-[12px] w-[12px] accent-primary"
-                    aria-label="Select all tickets on this page"
-                  />
-                </th>
-              )}
-              {COLUMNS.map((col) => (
-                <th key={col.key} className="px-[15px] py-[10.5px] font-semibold">
-                  <button
-                    type="button"
-                    onClick={() => toggleSort(col.key)}
-                    className="inline-flex cursor-pointer select-none items-center gap-[4.5px] hover:text-ink"
-                  >
-                    {col.label}
-                    {sort.key === col.key ? (
-                      sort.direction === "asc" ? (
-                        <ArrowUp size={11} strokeWidth={2.5} className="text-[color:var(--color-blue)]" />
-                      ) : (
-                        <ArrowDown size={11} strokeWidth={2.5} className="text-[color:var(--color-blue)]" />
-                      )
-                    ) : (
-                      <ChevronsUpDown size={11} strokeWidth={2.25} className="text-faint" />
-                    )}
-                  </button>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {paginated.map((t, i) => (
-              <tr
-                key={t.id}
-                className={`border-b border-divider transition-colors last:border-b-0 hover:bg-result-bg/40 ${
-                  i % 2 === 1 ? "bg-result-bg/20" : ""
-                }`}
+        {sorted.length === 0 ? (
+          <div className="flex flex-col items-center gap-[4px] px-[16px] py-[48px] text-center">
+            <p className="text-[13px] font-medium text-ink">Nothing matches</p>
+            <p className="text-[12px] text-muted-2">Try another search, or loosen a filter.</p>
+            {(hasFilters || statusFilter !== "All") && (
+              <button
+                type="button"
+                onClick={() => {
+                  clearFilters();
+                  setStatusFilter("All");
+                }}
+                className="mt-[10px] h-[28px] rounded-[7px] border border-field-border hover:border-field-border-hover px-[10px] text-[12px] text-ink transition-colors hover:bg-surface-2"
               >
-                {canManage && (
-                  <td className="px-[15px] py-[12px]">
-                    <input
-                      type="checkbox"
-                      checked={selectAllMatching || selected.has(t.ticket_number)}
-                      onChange={() => toggleSelectRow(t.ticket_number)}
-                      className="h-[12px] w-[12px] accent-primary"
-                      aria-label={`Select ticket ${t.ticket_number}`}
-                    />
-                  </td>
-                )}
-                <td
-                  className={`whitespace-nowrap border-l-[3px] px-[15px] py-[12px] font-mono-plex ${
-                    PRIORITY_BAR[t.priority] ?? PRIORITY_BAR.Normal
+                Show all tickets
+              </button>
+            )}
+          </div>
+        ) : (
+          <ul className="flex flex-col pt-[4px]">
+            {paginated.map((t) => {
+              const rowSelected = selectAllMatching || selected.has(t.ticket_number);
+              const overdue = isOverdue(t, slaHours);
+              const atRisk = !overdue && isAtRisk(t, slaHours);
+              const assignee = t.assigned_to || null;
+              return (
+                <li
+                  key={t.id}
+                  className={`relative flex h-[40px] items-stretch gap-[10px] rounded-[8px] px-[10px] text-[13px] transition-colors duration-150 has-[a:focus-visible]:outline-2 has-[a:focus-visible]:outline-ring ${
+                    rowSelected ? "bg-primary-soft" : "hover:bg-surface-2/50"
                   }`}
                 >
-                  <Link
-                    href={`/admin/tickets/${t.ticket_number}`}
-                    className="inline-flex items-center gap-[4.5px] rounded-full border border-[color:var(--color-blue)]/25 bg-[color:var(--color-blue-light)] px-[9px] py-[4.5px] text-[9.75px] font-semibold text-[color:var(--color-blue-text)] transition-colors hover:bg-[color:var(--color-blue)] hover:text-paper"
-                  >
-                    {t.ticket_number}
-                  </Link>
-                </td>
-                <td className="px-[15px] py-[12px]">
-                  <span className="font-medium text-ink">{t.subject}</span>
-                </td>
-                <td className="px-[15px] py-[12px] text-muted">
-                  <div className="flex items-center gap-[9px]">
-                    <Avatar name={t.name} />
-                    <div className="flex flex-col gap-[1.5px]">
-                      <span className="text-ink">{t.name}</span>
-                      <span className="text-[9px] text-faint">
-                        {t.staff_no} · {t.email}
-                      </span>
-                    </div>
-                  </div>
-                </td>
-                <td className="px-[15px] py-[12px] text-muted">{t.category}</td>
-                <td className="whitespace-nowrap px-[15px] py-[12px]">
-                  <span className="rounded-full border border-[color:var(--color-violet)]/25 bg-[color:var(--color-violet-light)] px-[8.25px] py-[3.75px] text-[9px] font-semibold text-[color:var(--color-violet-text)]">
-                    {t.team}
-                  </span>
-                </td>
-                <td className="whitespace-nowrap px-[15px] py-[12px]">
-                  {t.assigned_to ? (
-                    <span className="rounded-full border border-pill-border bg-pill-bg px-[8.25px] py-[3.75px] text-[9px] font-semibold text-pill-text">
-                      {t.assigned_to}
-                    </span>
-                  ) : (
-                    <span className="rounded-full border border-dashed border-card-border px-[8.25px] py-[3.75px] text-[9px] font-medium text-faint">
-                      {UNASSIGNED}
+                  {canManage && (
+                    <span className="relative z-10 flex shrink-0 items-center">
+                      <input
+                        type="checkbox"
+                        checked={rowSelected}
+                        onChange={() => toggleSelectRow(t.ticket_number)}
+                        className="h-[14px] w-[14px] accent-primary"
+                        aria-label={`Select ticket ${t.ticket_number}`}
+                      />
                     </span>
                   )}
-                </td>
-                <td className="whitespace-nowrap px-[15px] py-[12px]">
-                  <span
-                    className={`rounded-full border px-[8.25px] py-[3.75px] text-[9px] font-semibold ${
-                      STATUS_STYLES[t.status] ?? STATUS_STYLES.Open
-                    }`}
-                  >
-                    {t.status}
+                  <span className={`${COL.id} font-mono-plex text-[12px] text-muted`}>{t.ticket_number}</span>
+                  <span className={COL.issue}>
+                    {/* The link's ::after stretches over the whole row, so the row is one big click target. */}
+                    <Link
+                      href={`/admin/tickets/${t.ticket_number}`}
+                      title={t.subject}
+                      className="min-w-0 truncate font-medium text-ink outline-none after:absolute after:inset-0 after:rounded-[8px] after:content-['']"
+                    >
+                      {t.subject}
+                    </Link>
+                    {overdue && <OverdueBadge />}
+                    {atRisk && <AtRiskBadge />}
                   </span>
-                </td>
-                <td className="whitespace-nowrap px-[15px] py-[12px] text-[9px] text-faint">
-                  <div className="flex items-center gap-[6px]">
-                    {t.submittedLabel}
-                    {isOverdue(t, slaHours) && (
-                      <span
-                        title="Past SLA target for its priority"
-                        className="inline-flex items-center gap-[3px] rounded-full border border-amber-border bg-amber-bg px-[6px] py-[1.5px] text-[8px] font-semibold uppercase tracking-[0.04em] text-amber-text-strong"
-                      >
-                        <TimerReset size={9} strokeWidth={2.5} />
-                        Overdue
-                      </span>
-                    )}
-                    {isAtRisk(t, slaHours) && (
-                      <span
-                        title="Approaching SLA target for its priority"
-                        className="inline-flex items-center gap-[3px] rounded-full border border-amber-border bg-white px-[6px] py-[1.5px] text-[8px] font-semibold uppercase tracking-[0.04em] text-amber-text-strong"
-                      >
-                        <AlertTriangle size={9} strokeWidth={2.5} />
-                        At risk
-                      </span>
-                    )}
-                  </div>
-                </td>
-                <td className="whitespace-nowrap px-[15px] py-[12px]">
-                  <span
-                    className={`rounded-full border px-[8.25px] py-[3.75px] text-[9px] font-semibold ${
-                      PRIORITY_STYLES[t.priority] ?? PRIORITY_STYLES.Normal
-                    }`}
-                  >
-                    {t.priority}
+                  <span className={COL.createdBy}>
+                    <span className="truncate text-ink" title={t.name}>
+                      {t.name}
+                    </span>
                   </span>
-                </td>
-              </tr>
-            ))}
-            {sorted.length === 0 && (
-              <tr>
-                <td
-                  colSpan={COLUMNS.length + (canManage ? 1 : 0)}
-                  className="px-[15px] py-[24px] text-center text-[10.5px] text-faint"
-                >
-                  No tickets match your search or filters.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
+                  <span className={COL.team}>
+                    {t.team ? (
+                      <>
+                        <span className={`h-[7px] w-[7px] shrink-0 rounded-full ${TEAM_DOT[t.team] ?? "bg-faint"}`} aria-hidden="true" />
+                        <span className="truncate text-ink" title={t.team}>
+                          {teamShort(t.team)}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-faint">—</span>
+                    )}
+                  </span>
+                  <span className={COL.priority}>
+                    <PriorityBadge priority={t.priority} />
+                  </span>
+                  <span className={COL.status}>
+                    <StatusDot status={t.status} />
+                    <span className="truncate text-ink">{t.status}</span>
+                  </span>
+                  <span className={`${COL.assignee} min-w-0`}>
+                    {assignee ? (
+                      <>
+                        <Avatar name={assignee} size={20} />
+                        <span className="truncate text-ink" title={assignee}>
+                          {assignee}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="flex h-[20px] w-[20px] shrink-0 items-center justify-center rounded-full border border-dashed border-faint/60 text-faint">
+                          <UserRound size={11} strokeWidth={2} />
+                        </span>
+                        <span className="truncate text-faint">{UNASSIGNED}</span>
+                      </>
+                    )}
+                  </span>
+                  <span className={`${COL.created} tabular-nums text-ink`} title={`${t.createdDate} ${t.createdTime}`}>
+                    {t.createdDate}
+                  </span>
+                  {/* Phone-width cards keep only a status dot. */}
+                  <span className="flex items-center @min-[480px]:hidden">
+                    <StatusDot status={t.status} />
+                    <span className="sr-only">{t.status}</span>
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
+
+      <div className="flex min-h-[28px] flex-wrap items-center justify-between gap-[8px]">
+        <span className="text-[12px] text-muted-2 tabular-nums">
+          {sorted.length === 0
+            ? "No tickets"
+            : `Showing ${rangeStart}–${rangeEnd} of ${sorted.length.toLocaleString()} ticket${sorted.length === 1 ? "" : "s"}`}
+        </span>
+        <Pagination page={currentPage} totalPages={totalPages} onPage={setPage} />
       </div>
 
-      {totalPages > 1 && (
-        <div className="flex flex-wrap items-center justify-between gap-[9px]">
-          <span className="text-[9px] text-faint">
-            Page {currentPage} of {totalPages}
-          </span>
-          <div className="flex items-center gap-[4.5px]">
-            <button
-              type="button"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={currentPage === 1}
-              className="flex h-[27px] w-[27px] items-center justify-center rounded-[7.5px] border border-card-border bg-white text-muted transition-colors hover:border-primary/40 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
+      {/* Bulk actions float over the list while anything is selected, like a command bar. */}
+      <AnimatePresence>
+        {bulkBarOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 16 }}
+            transition={{ duration: 0.22, ease: EASE_OUT }}
+            className="pointer-events-none fixed inset-x-0 bottom-[20px] z-40 flex justify-center px-[16px]"
+          >
+            <div
+              role="toolbar"
+              aria-label="Bulk actions"
+              className="pointer-events-auto flex flex-wrap items-center gap-[2px] rounded-[12px] bg-navy p-[6px] text-white shadow-[0_12px_32px_rgba(15,23,42,0.28)]"
             >
-              <ChevronLeft size={13} strokeWidth={2.25} />
-            </button>
-            {getPageNumbers(currentPage, totalPages).map((p, i) =>
-              p === "ellipsis" ? (
-                <span key={`ellipsis-${i}`} className="px-[4.5px] text-[9.75px] text-faint">
-                  …
+              <span className="px-[8px] text-[13px] font-medium tabular-nums">{selectionCount} selected</span>
+              <BarButton onClick={clearSelection} label="Clear selection" iconOnly>
+                <X size={14} strokeWidth={2} />
+              </BarButton>
+              <span className="mx-[4px] h-[18px] w-px bg-white/15" aria-hidden="true" />
+              <BulkMenu
+                label="Status"
+                disabled={applying}
+                options={BULK_STATUSES.map((s) => ({ value: s, icon: <StatusDot status={s} /> }))}
+                onPick={(s) => setPendingAction({ type: "status", status: s })}
+              />
+              <BulkMenu
+                label="Priority"
+                disabled={applying}
+                options={BULK_PRIORITIES.map((p) => ({ value: p, icon: <PriorityDot priority={p} /> }))}
+                onPick={(p) => setPendingAction({ type: "priority", priority: p })}
+              />
+              <AssignMenu
+                value={bulkAssignee}
+                onChange={setBulkAssignee}
+                options={assigneeOptions}
+                disabled={applying}
+                onApply={() => setPendingAction({ type: "assign", assignedTo: bulkAssignee })}
+              />
+              {applying && (
+                <span className="inline-flex items-center gap-[6px] px-[8px] text-[12px] text-white/70">
+                  <Loader2 size={14} strokeWidth={2} className="animate-spin" />
+                  Applying…
                 </span>
-              ) : (
-                <button
-                  key={p}
-                  type="button"
-                  onClick={() => setPage(p)}
-                  className={`flex h-[27px] w-[27px] items-center justify-center rounded-[7.5px] border text-[9.75px] font-semibold transition-colors ${
-                    p === currentPage
-                      ? "border-primary bg-primary text-paper"
-                      : "border-card-border bg-white text-muted hover:border-primary/40 hover:text-primary"
-                  }`}
-                >
-                  {p}
-                </button>
-              )
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/** Segmented status filter; the active pill slides between tabs. */
+function StatusTabs({
+  statuses,
+  counts,
+  total,
+  value,
+  onChange,
+}: {
+  statuses: string[];
+  counts: Map<string, number>;
+  total: number;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const tabs = [{ value: "All", label: "All", count: total }, ...statuses.map((s) => ({ value: s, label: s, count: counts.get(s) ?? 0 }))];
+  return (
+    <div
+      role="tablist"
+      aria-label="Status"
+      className="inline-flex h-[32px] max-w-full items-center overflow-x-auto rounded-[9px] border border-field-border bg-surface-2 p-[2px]"
+    >
+      {tabs.map((tab) => {
+        const active = tab.value === value;
+        return (
+          <button
+            key={tab.value}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => onChange(tab.value)}
+            className={`relative flex h-[26px] shrink-0 items-center gap-[6px] whitespace-nowrap rounded-[7px] px-[10px] text-[13px] transition-colors ${
+              active ? "text-ink" : "text-muted-2 hover:text-ink"
+            }`}
+          >
+            {active && (
+              <motion.span
+                layoutId="ticket-status-tab"
+                transition={{ type: "spring", stiffness: 420, damping: 34 }}
+                className="absolute inset-0 rounded-[7px] bg-surface shadow-card"
+              />
             )}
+            <span className="relative flex items-center gap-[6px]">
+              {tab.value !== "All" && <StatusDot status={tab.value} />}
+              {tab.label}
+              <span className={`text-[12px] tabular-nums ${active ? "text-muted-2" : "text-faint"}`}>{tab.count}</span>
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function BarButton({
+  label,
+  onClick,
+  disabled,
+  iconOnly,
+  expanded,
+  children,
+}: {
+  label: string;
+  onClick: () => void;
+  disabled?: boolean;
+  iconOnly?: boolean;
+  expanded?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      aria-label={iconOnly ? label : undefined}
+      aria-expanded={expanded}
+      title={iconOnly ? label : undefined}
+      className={`inline-flex h-[30px] items-center gap-[6px] rounded-[8px] text-[13px] text-white/85 transition-colors hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-50 ${
+        iconOnly ? "w-[30px] justify-center" : "px-[10px]"
+      } ${expanded ? "bg-white/10 text-white" : ""}`}
+    >
+      {children}
+    </button>
+  );
+}
+
+/** A bulk-bar menu that opens upward, since the bar sits at the bottom of the screen. */
+function BulkMenu({
+  label,
+  options,
+  onPick,
+  disabled,
+}: {
+  label: string;
+  options: { value: string; icon: React.ReactNode }[];
+  onPick: (value: string) => void;
+  disabled?: boolean;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useDismiss(open, () => setOpen(false));
+  return (
+    <div ref={ref} className="relative">
+      <BarButton label={label} onClick={() => setOpen((v) => !v)} disabled={disabled} expanded={open}>
+        {label}
+        <ChevronDown size={14} strokeWidth={1.75} className={`transition-transform duration-200 ${open ? "" : "rotate-180"}`} />
+      </BarButton>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            role="menu"
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 4 }}
+            transition={{ duration: 0.14, ease: EASE_OUT }}
+            className="absolute bottom-[calc(100%+10px)] left-0 z-50 w-[160px] rounded-[10px] border border-card-border bg-surface p-[4px] text-ink shadow-pop"
+          >
+            {options.map((o) => (
+              <button
+                key={o.value}
+                type="button"
+                role="menuitem"
+                onClick={() => {
+                  setOpen(false);
+                  onPick(o.value);
+                }}
+                className="flex h-[30px] w-full items-center gap-[8px] rounded-[6px] px-[8px] text-left text-[13px] transition-colors hover:bg-surface-2"
+              >
+                {o.icon}
+                {o.value}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+function AssignMenu({
+  value,
+  onChange,
+  options,
+  disabled,
+  onApply,
+}: {
+  value: string;
+  onChange: (name: string) => void;
+  options: AssigneeOption[];
+  disabled?: boolean;
+  onApply: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useDismiss(open, () => setOpen(false));
+  return (
+    <div ref={ref} className="relative">
+      <BarButton label="Assign" onClick={() => setOpen((v) => !v)} disabled={disabled} expanded={open}>
+        <UserRound size={14} strokeWidth={1.75} />
+        Assign
+      </BarButton>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: 4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 4 }}
+            transition={{ duration: 0.14, ease: EASE_OUT }}
+            className="absolute bottom-[calc(100%+10px)] right-0 z-50 flex w-[300px] items-center gap-[6px] rounded-[10px] border border-card-border bg-surface p-[8px] text-ink shadow-pop sm:left-0 sm:right-auto"
+          >
+            <AssigneeLookup value={value} onChange={onChange} options={options} disabled={disabled} placement="top" />
             <button
               type="button"
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={currentPage === totalPages}
-              className="flex h-[27px] w-[27px] items-center justify-center rounded-[7.5px] border border-card-border bg-white text-muted transition-colors hover:border-primary/40 hover:text-primary disabled:cursor-not-allowed disabled:opacity-40"
+              disabled={disabled}
+              onClick={() => {
+                setOpen(false);
+                onApply();
+              }}
+              className="inline-flex h-[32px] shrink-0 items-center gap-[6px] rounded-[8px] bg-primary px-[12px] text-[13px] font-medium text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
             >
-              <ChevronRight size={13} strokeWidth={2.25} />
+              <Check size={14} strokeWidth={2} />
+              Apply
             </button>
-          </div>
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
 
 function uniqueSorted(values: string[]): string[] {
   return Array.from(new Set(values)).sort((a, b) => a.localeCompare(b));
-}
-
-function getPageNumbers(current: number, total: number): (number | "ellipsis")[] {
-  if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
-  const pages: (number | "ellipsis")[] = [1];
-  if (current > 3) pages.push("ellipsis");
-  for (let p = Math.max(2, current - 1); p <= Math.min(total - 1, current + 1); p++) {
-    pages.push(p);
-  }
-  if (current < total - 2) pages.push("ellipsis");
-  pages.push(total);
-  return pages;
 }

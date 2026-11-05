@@ -1,31 +1,22 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Space_Grotesk, IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
+import { Inter } from "next/font/google";
 import { iamsLoginUrl } from "@/app/lib/iamsLoginUrl";
 import { getIamsSession } from "@/app/lib/iamsSession";
 import { getOnlineUsers } from "@/app/lib/presence";
 import HeaderNav from "@/app/components/HeaderNav";
 import PresenceHeartbeat from "@/app/components/PresenceHeartbeat";
 import OnlineUsersBar from "@/app/components/OnlineUsersBar";
+import PortalChrome from "@/app/components/PortalChrome";
+import { THEME_INIT_SCRIPT } from "@/app/lib/theme";
 import packageJson from "@/package.json";
 import "./globals.css";
 
-const spaceGrotesk = Space_Grotesk({
-  variable: "--font-space-grotesk",
+// Inter is the only typeface in the system: designed for screens and very legible at the compact
+// 12-13px scale. Codes such as ticket IDs use it too, with its disambiguation features (globals.css).
+const interSans = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
-  weight: ["500", "600", "700"],
-});
-
-const ibmPlexSans = IBM_Plex_Sans({
-  variable: "--font-ibm-plex-sans",
-  subsets: ["latin"],
-  weight: ["400", "500", "600"],
-});
-
-const ibmPlexMono = IBM_Plex_Mono({
-  variable: "--font-ibm-plex-mono",
-  subsets: ["latin"],
-  weight: ["400", "500"],
 });
 
 export const metadata: Metadata = {
@@ -53,11 +44,17 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="en"
-      className={`${spaceGrotesk.variable} ${ibmPlexSans.variable} ${ibmPlexMono.variable} h-full antialiased`}
+      className={`${interSans.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
+      <head>
+        {/* Applies the saved theme before first paint so dark mode never flashes light. */}
+        <script dangerouslySetInnerHTML={{ __html: THEME_INIT_SCRIPT }} />
+      </head>
       <body className="min-h-full flex flex-col bg-paper font-body text-ink">
-        <header className="sticky top-0 z-50 flex items-center justify-between gap-[18px] border-b border-white/10 bg-nav-gradient px-[21px] py-[16.5px] text-paper shadow-[0_1px_0_rgba(255,255,255,0.06)_inset] md:px-[42px]">
-          <Link href="/" className="flex items-center gap-[10.5px] text-paper">
+        <PortalChrome>
+        <header className="sticky top-0 z-50 flex items-center justify-between gap-[18px] border-b border-white/10 bg-nav-gradient px-[21px] py-[16.5px] text-white shadow-[0_1px_0_rgba(255,255,255,0.06)_inset] md:px-[42px]">
+          <Link href="/" className="flex items-center gap-[10.5px] text-white">
             {/* eslint-disable-next-line @next/next/no-img-element -- next/image's optimizer 400s on this asset under our basePath; a plain <img> avoids it for this fixed-size header icon. */}
             <img
               src={`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/logo-it.jpg`}
@@ -77,16 +74,18 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
           </Link>
           <HeaderNav adminHref={adminHref} adminLabel={adminLabel} showSignOut={!!session} />
         </header>
+        </PortalChrome>
 
         {session && <PresenceHeartbeat />}
         {children}
 
+        <PortalChrome>
         {session && <OnlineUsersBar initialUsers={onlineUsers} />}
 
         <footer className="flex flex-wrap items-center justify-between gap-[15px] border-t border-white/10 bg-nav-gradient px-[42px] py-[21px] text-[9.75px] text-faint">
           <span>
             This system is developed by{" "}
-            <strong className="font-semibold text-paper">PHN IT Department</strong>.
+            <strong className="font-semibold text-white">PHN IT Department</strong>.
             <span className="text-faint/70">
               {" "}
               · v{packageJson.version}
@@ -94,20 +93,21 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
             </span>
           </span>
           <div className="flex items-center gap-[19.5px]">
-            <Link href="/" className="hover:text-paper">
+            <Link href="/" className="hover:text-white">
               Home
             </Link>
-            <Link href="/submit" className="hover:text-paper">
+            <Link href="/submit" className="hover:text-white">
               Submit a ticket
             </Link>
-            <Link href="/tickets" className="hover:text-paper">
+            <Link href="/tickets" className="hover:text-white">
               View my tickets
             </Link>
-            <a href={adminHref} className="hover:text-paper">
+            <a href={adminHref} className="hover:text-white">
               {adminLabel}
             </a>
           </div>
         </footer>
+        </PortalChrome>
       </body>
     </html>
   );

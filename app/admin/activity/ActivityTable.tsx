@@ -1,229 +1,226 @@
 "use client";
 
-import { useMemo, useState } from "react";
 import Link from "next/link";
-import { Search, ArrowUp, ArrowDown, ChevronsUpDown, History, SlidersHorizontal } from "lucide-react";
+import { ArrowRight, UserRound } from "lucide-react";
 import FilterDropdown from "@/app/components/FilterDropdown";
+import Avatar from "@/app/components/Avatar";
+import { StatusDot, PriorityDot } from "@/app/components/TicketBadges";
+import { SortHeader } from "../listParts";
+import { ActorCell, KindTag, LogFooter, LogList, LogToolbar, TimeCell, useLogList, COL_SEP, LOG_ROW, type LogStamp } from "./logParts";
 
-export type ActivityRow = {
-  id: number;
-  createdAt: string;
-  createdAtLabel: string;
+export type ActivityRow = LogStamp & {
   eventType: string;
+  fromValue: string | null;
+  toValue: string | null;
   actorName: string;
   ticketNumber: string;
   subject: string;
+  /** Plain-sentence version of the change; searched, and the fallback for unknown event types. */
   description: string;
 };
 
-type SortKey = "createdAt" | "eventType" | "actorName" | "ticketNumber" | "description";
+type SortKey = "eventType" | "actorName" | "ticketNumber" | "description";
 
-const COLUMNS: { key: SortKey; label: string }[] = [
-  { key: "createdAt", label: "Timestamp" },
-  { key: "eventType", label: "Type" },
-  { key: "actorName", label: "Modified by" },
-  { key: "ticketNumber", label: "Ticket #" },
-  { key: "description", label: "Change" },
-];
-
-const TYPE_STYLES: Record<string, string> = {
-  status: "border-[color:var(--color-blue)]/25 bg-[color:var(--color-blue-light)] text-[color:var(--color-blue-text)]",
-  assignment:
-    "border-[color:var(--color-violet)]/25 bg-[color:var(--color-violet-light)] text-[color:var(--color-violet-text)]",
-  priority: "border-[color:var(--color-rose)]/25 bg-[color:var(--color-rose-light)] text-[color:var(--color-rose-text)]",
-  feedback:
-    "border-[color:var(--color-emerald)]/25 bg-[color:var(--color-emerald-light)] text-[color:var(--color-emerald-text)]",
-  sla_breach: "border-amber-border bg-amber-bg text-amber-text-strong",
+const KIND: Record<string, { label: string; dot: string }> = {
+  status: { label: "Status", dot: "bg-primary" },
+  assignment: { label: "Assignment", dot: "bg-chart-sky" },
+  priority: { label: "Priority", dot: "bg-chart-amber" },
+  feedback: { label: "Feedback", dot: "bg-lime" },
+  sla_breach: { label: "SLA breach", dot: "bg-rose" },
 };
 
-const TYPE_LABELS: Record<string, string> = {
-  sla_breach: "SLA breach",
-};
+function kindLabel(type: string): string {
+  return KIND[type]?.label ?? type.replace(/_/g, " ");
+}
 
-const SEARCH_FIELDS: (keyof ActivityRow)[] = [
-  "actorName",
-  "ticketNumber",
-  "subject",
-  "description",
-  "eventType",
-];
+/**
+ * Column slots shared by the header and every row. Secondary columns appear only once the list
+ * is wide enough; below that their content folds into the change cell.
+ */
+const COL = {
+  kind: `hidden w-[124px] shrink-0 @min-[880px]:flex ${COL_SEP}`,
+  change: `flex min-w-0 flex-1 ${COL_SEP}`,
+  ticket: `hidden w-[232px] shrink-0 @min-[760px]:flex @min-[1000px]:w-[272px] @min-[1120px]:w-[352px] ${COL_SEP}`,
+  actor: `hidden w-[180px] shrink-0 @min-[560px]:flex ${COL_SEP}`,
+} as const;
 
-function uniqueSorted(values: string[]): string[] {
-  return Array.from(new Set(values)).sort((a, b) => a.localeCompare(b));
+const SEARCH_FIELDS: (keyof ActivityRow)[] = ["actorName", "ticketNumber", "subject", "description", "eventType"];
+
+function sortValue(row: ActivityRow, key: SortKey): string {
+  return row[key];
 }
 
 export default function ActivityTable({ events }: { events: ActivityRow[] }) {
-  const [search, setSearch] = useState("");
-  const [typeFilter, setTypeFilter] = useState("All");
-  const [actorFilter, setActorFilter] = useState("All");
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
-  const [sort, setSort] = useState<{ key: SortKey; direction: "asc" | "desc" }>({
-    key: "createdAt",
-    direction: "desc",
+  const log = useLogList<ActivityRow, SortKey>(events, {
+    searchFields: SEARCH_FIELDS,
+    facets: ["eventType", "actorName"],
+    sortValue,
   });
-
-  const types = useMemo(() => uniqueSorted(events.map((e) => e.eventType)), [events]);
-  const actors = useMemo(() => uniqueSorted(events.map((e) => e.actorName)), [events]);
-
-  function toggleSort(key: SortKey) {
-    setSort((prev) =>
-      prev.key === key
-        ? { key, direction: prev.direction === "asc" ? "desc" : "asc" }
-        : { key, direction: "asc" }
-    );
-  }
-
-  const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    const fromMs = dateFrom ? new Date(`${dateFrom}T00:00:00`).getTime() : null;
-    const toMs = dateTo ? new Date(`${dateTo}T23:59:59.999`).getTime() : null;
-    return events.filter((e) => {
-      if (typeFilter !== "All" && e.eventType !== typeFilter) return false;
-      if (actorFilter !== "All" && e.actorName !== actorFilter) return false;
-      const t = new Date(e.createdAt).getTime();
-      if (fromMs !== null && t < fromMs) return false;
-      if (toMs !== null && t > toMs) return false;
-      if (!q) return true;
-      return SEARCH_FIELDS.some((field) => String(e[field] ?? "").toLowerCase().includes(q));
-    });
-  }, [events, search, typeFilter, actorFilter, dateFrom, dateTo]);
-
-  const sorted = useMemo(() => {
-    const rows = [...filtered];
-    rows.sort((a, b) => {
-      if (sort.key === "createdAt") {
-        const diff = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-        return sort.direction === "asc" ? diff : -diff;
-      }
-      const diff = a[sort.key].localeCompare(b[sort.key]);
-      return sort.direction === "asc" ? diff : -diff;
-    });
-    return rows;
-  }, [filtered, sort]);
+  const timeCol = log.grouped ? "flex w-[48px] shrink-0" : "flex w-[132px] shrink-0";
 
   return (
     <div className="flex flex-col gap-[12px]">
-      <div className="flex flex-wrap items-center gap-[9px] rounded-[12px] border border-card-border bg-white px-[13.5px] py-[12px] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-        <div className="relative min-w-[220px] flex-1">
-          <Search
-            size={14}
-            strokeWidth={2.25}
-            className="pointer-events-none absolute left-[11px] top-1/2 -translate-y-1/2 text-faint"
-          />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by modified by, ticket #, or change…"
-            className="w-full rounded-full border border-card-border bg-paper py-[8.25px] pl-[32px] pr-[12px] text-[10.5px] text-ink outline-none focus:border-[color:var(--color-blue)]"
-          />
-        </div>
-        <span className="inline-flex items-center gap-[4.5px] text-[9px] font-semibold uppercase tracking-[0.06em] text-muted-2">
-          <SlidersHorizontal size={12} strokeWidth={2.25} />
-          Filters
-        </span>
-        <FilterDropdown label="Type" value={typeFilter} onChange={setTypeFilter} options={types} />
-        <FilterDropdown label="Modified by" value={actorFilter} onChange={setActorFilter} options={actors} />
-        <div className="flex items-center gap-[6px]">
-          <input
-            type="date"
-            value={dateFrom}
-            onChange={(e) => setDateFrom(e.target.value)}
-            max={dateTo || undefined}
-            aria-label="From date"
-            className="rounded-[7.5px] border border-card-border bg-paper px-[9px] py-[6px] text-[9.75px] text-ink outline-none focus:border-[color:var(--color-blue)]"
-          />
-          <span className="text-[9px] text-faint">to</span>
-          <input
-            type="date"
-            value={dateTo}
-            onChange={(e) => setDateTo(e.target.value)}
-            min={dateFrom || undefined}
-            aria-label="To date"
-            className="rounded-[7.5px] border border-card-border bg-paper px-[9px] py-[6px] text-[9.75px] text-ink outline-none focus:border-[color:var(--color-blue)]"
-          />
-        </div>
-      </div>
+      <LogToolbar
+        search={log.search}
+        onSearch={log.setSearch}
+        placeholder="Search ID, subject, person…"
+        dateFrom={log.dateFrom}
+        dateTo={log.dateTo}
+        onDateFrom={log.setDateFrom}
+        onDateTo={log.setDateTo}
+        hasFilters={log.hasFilters}
+        onClear={log.clear}
+      >
+        <FilterDropdown
+          label="Type"
+          value={log.facetValues[0]}
+          onChange={(v) => log.setFacet(0, v)}
+          options={log.facetOptions[0]}
+          optionLabel={kindLabel}
+        />
+        <FilterDropdown label="Changed by" value={log.facetValues[1]} onChange={(v) => log.setFacet(1, v)} options={log.facetOptions[1]} />
+      </LogToolbar>
 
-      <span className="text-[9px] text-faint">
-        Showing {sorted.length} of {events.length} events
-      </span>
+      <LogList
+        label="Ticket activity"
+        noun="ticket changes"
+        rows={log.pageRows}
+        grouped={log.grouped}
+        dayCounts={log.dayCounts}
+        hasFilters={log.hasFilters}
+        onClear={log.clear}
+        header={
+          <>
+            <SortHeader label="Time" sortKey="createdAt" sort={log.sort} onSort={log.toggleSort} className={timeCol} />
+            <SortHeader label="Type" sortKey="eventType" sort={log.sort} onSort={log.toggleSort} className={COL.kind} />
+            <SortHeader label="Change" sortKey="description" sort={log.sort} onSort={log.toggleSort} className={COL.change} />
+            <SortHeader label="Ticket" sortKey="ticketNumber" sort={log.sort} onSort={log.toggleSort} className={COL.ticket} />
+            <SortHeader label="Changed by" sortKey="actorName" sort={log.sort} onSort={log.toggleSort} className={COL.actor} />
+          </>
+        }
+        renderRow={(e) => (
+          <li key={e.id} className={LOG_ROW}>
+            <TimeCell row={e} grouped={log.grouped} className={timeCol} />
+            <span className={COL.kind}>
+              <KindTag dot={KIND[e.eventType]?.dot ?? "bg-faint"} label={kindLabel(e.eventType)} />
+            </span>
+            <div className={`${COL.change} flex-col`}>
+              <div className="flex min-w-0 flex-wrap items-center gap-x-[8px] gap-y-[2px]">
+                {/* Without its own column, the type leads the change. */}
+                <span className="text-muted-2 @min-[880px]:hidden">{kindLabel(e.eventType)}</span>
+                <Change row={e} />
+              </div>
+              {/* Ticket and person fold under the change on narrow lists. */}
+              <div className="flex min-w-0 items-center gap-[6px] text-[12px] text-muted-2 @min-[760px]:hidden">
+                <Link href={`/admin/tickets/${e.ticketNumber}`} className="shrink-0 font-mono-plex text-ink hover:text-primary">
+                  {e.ticketNumber}
+                </Link>
+                <span className="hidden truncate @min-[480px]:inline">{e.subject}</span>
+                <span className="shrink-0 @min-[560px]:hidden">· {e.actorName}</span>
+              </div>
+            </div>
+            <Link
+              href={`/admin/tickets/${e.ticketNumber}`}
+              title={`${e.ticketNumber} · ${e.subject}`}
+              className={`${COL.ticket} group/tk min-w-0 items-baseline gap-[8px] rounded-[4px]`}
+            >
+              <span className="shrink-0 font-mono-plex text-[12px] text-muted-2 transition-colors group-hover/tk:text-primary">
+                {e.ticketNumber}
+              </span>
+              <span className="truncate text-ink transition-colors group-hover/tk:text-primary">{e.subject}</span>
+            </Link>
+            <ActorCell name={e.actorName} className={COL.actor} />
+          </li>
+        )}
+      />
 
-      <div className="overflow-x-auto rounded-[12px] border border-card-border shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-        <table className="w-full min-w-[820px] border-collapse text-left text-[10.5px]">
-          <thead>
-            <tr className="border-b border-card-border bg-result-bg/50 text-[9px] uppercase tracking-[0.06em] text-muted-2">
-              {COLUMNS.map((col) => (
-                <th key={col.key} className="px-[15px] py-[10.5px] font-semibold">
-                  <button
-                    type="button"
-                    onClick={() => toggleSort(col.key)}
-                    className="inline-flex cursor-pointer select-none items-center gap-[4.5px] hover:text-ink"
-                  >
-                    {col.label}
-                    {sort.key === col.key ? (
-                      sort.direction === "asc" ? (
-                        <ArrowUp size={11} strokeWidth={2.5} className="text-[color:var(--color-blue)]" />
-                      ) : (
-                        <ArrowDown size={11} strokeWidth={2.5} className="text-[color:var(--color-blue)]" />
-                      )
-                    ) : (
-                      <ChevronsUpDown size={11} strokeWidth={2.25} className="text-faint" />
-                    )}
-                  </button>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {sorted.map((e, i) => (
-              <tr
-                key={e.id}
-                className={`border-b border-divider transition-colors last:border-b-0 hover:bg-result-bg/40 ${
-                  i % 2 === 1 ? "bg-result-bg/20" : ""
-                }`}
-              >
-                <td className="whitespace-nowrap px-[15px] py-[12px] text-[9px] text-faint">
-                  {e.createdAtLabel}
-                </td>
-                <td className="whitespace-nowrap px-[15px] py-[12px]">
-                  <span
-                    className={`inline-flex items-center gap-[4.5px] rounded-full border px-[8.25px] py-[3.75px] text-[9px] font-semibold capitalize ${
-                      TYPE_STYLES[e.eventType] ?? "border-pill-border bg-pill-bg text-pill-text"
-                    }`}
-                  >
-                    <History size={9} strokeWidth={2.5} />
-                    {TYPE_LABELS[e.eventType] ?? e.eventType}
-                  </span>
-                </td>
-                <td className="whitespace-nowrap px-[15px] py-[12px] font-medium text-ink">{e.actorName}</td>
-                <td className="whitespace-nowrap px-[15px] py-[12px]">
-                  <Link
-                    href={`/admin/tickets/${e.ticketNumber}`}
-                    className="inline-flex items-center gap-[4.5px] rounded-full border border-[color:var(--color-blue)]/25 bg-[color:var(--color-blue-light)] px-[9px] py-[4.5px] text-[9.75px] font-semibold text-[color:var(--color-blue-text)] transition-colors hover:bg-[color:var(--color-blue)] hover:text-paper"
-                  >
-                    {e.ticketNumber}
-                  </Link>
-                </td>
-                <td className="px-[15px] py-[12px] text-muted">
-                  <div className="flex flex-col gap-[1.5px]">
-                    <span className="text-ink">{e.description}</span>
-                    <span className="truncate text-[9px] text-faint">{e.subject}</span>
-                  </div>
-                </td>
-              </tr>
-            ))}
-            {sorted.length === 0 && (
-              <tr>
-                <td colSpan={COLUMNS.length} className="px-[15px] py-[24px] text-center text-[10.5px] text-faint">
-                  No activity matches your search.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+      <LogFooter
+        rangeStart={log.rangeStart}
+        rangeEnd={log.rangeEnd}
+        total={log.total}
+        noun={log.total === 1 ? "ticket change" : "ticket changes"}
+        page={log.page}
+        totalPages={log.totalPages}
+        onPage={log.setPage}
+      />
     </div>
+  );
+}
+
+/** The change itself, drawn as before → after where there is a before and an after. */
+function Change({ row }: { row: ActivityRow }) {
+  const { eventType, fromValue, toValue } = row;
+
+  if (eventType === "status" || eventType === "priority") {
+    const side = (v: string | null, strong: boolean) =>
+      v ? (
+        <span className={`inline-flex items-center gap-[6px] whitespace-nowrap ${strong ? "font-medium text-ink" : "text-muted"}`}>
+          {eventType === "status" ? <StatusDot status={v} /> : <PriorityDot priority={v} />}
+          {v}
+        </span>
+      ) : (
+        <span className="text-faint">—</span>
+      );
+    return (
+      <FromTo>
+        {side(fromValue, false)}
+        {side(toValue, true)}
+      </FromTo>
+    );
+  }
+
+  if (eventType === "assignment") {
+    const side = (v: string | null, strong: boolean) =>
+      v ? (
+        <span className={`inline-flex min-w-0 items-center gap-[6px] ${strong ? "font-medium text-ink" : "text-muted"}`}>
+          <Avatar name={v} size={16} />
+          <span className="truncate">{v}</span>
+        </span>
+      ) : (
+        <span className="inline-flex items-center gap-[6px] text-faint">
+          <span className="flex h-[16px] w-[16px] shrink-0 items-center justify-center rounded-full border border-dashed border-faint/60">
+            <UserRound size={9} strokeWidth={2} />
+          </span>
+          Unassigned
+        </span>
+      );
+    return (
+      <FromTo>
+        {side(fromValue, false)}
+        {side(toValue, true)}
+      </FromTo>
+    );
+  }
+
+  if (eventType === "feedback") {
+    const up = toValue === "up";
+    return (
+      <span className="text-ink">
+        Marked{" "}
+        <span className={`font-medium ${up ? "text-emerald-text" : "text-rose-text"}`}>{up ? "resolved" : "not resolved"}</span>
+      </span>
+    );
+  }
+
+  if (eventType === "sla_breach") {
+    return toValue === "notified" ? (
+      <span className="text-ink">Breach notification sent</span>
+    ) : (
+      <span className="text-ink">
+        Breach detected <span className="text-muted-2">· no one to notify</span>
+      </span>
+    );
+  }
+
+  return <span className="text-ink first-letter:uppercase">{row.description}</span>;
+}
+
+function FromTo({ children }: { children: [React.ReactNode, React.ReactNode] }) {
+  return (
+    <span className="inline-flex min-w-0 flex-wrap items-center gap-x-[8px] gap-y-[2px]">
+      {children[0]}
+      <ArrowRight size={13} strokeWidth={1.75} className="shrink-0 text-faint" aria-label="to" />
+      {children[1]}
+    </span>
   );
 }

@@ -54,7 +54,7 @@ export default function ConfirmDialog({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.96, y: 6 }}
             transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-            className="flex w-full max-w-[420px] flex-col gap-[15px] rounded-[14px] border border-card-border bg-white px-[21px] py-[19.5px] shadow-[0_24px_48px_rgba(15,23,42,0.25)]"
+            className="flex w-full max-w-[420px] flex-col gap-[15px] rounded-[14px] border border-card-border bg-surface px-[21px] py-[19.5px] shadow-[0_24px_48px_rgba(15,23,42,0.25)]"
           >
             <div className="flex items-start justify-between gap-[12px]">
               <div className="flex items-start gap-[10.5px]">
@@ -98,7 +98,7 @@ export default function ConfirmDialog({
                 type="button"
                 onClick={onConfirm}
                 disabled={loading}
-                className={`inline-flex items-center gap-[6px] whitespace-nowrap rounded-full px-[15px] py-[7.5px] text-[9.75px] font-semibold text-paper disabled:opacity-60 ${
+                className={`inline-flex items-center gap-[6px] whitespace-nowrap rounded-full px-[15px] py-[7.5px] text-[9.75px] font-semibold text-white disabled:opacity-60 ${
                   danger ? "bg-[color:var(--color-amber-solid)]" : "bg-admin-gradient"
                 }`}
               >

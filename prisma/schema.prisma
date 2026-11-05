@@ -163,3 +163,15 @@ model settings_audit_log {
 
   @@index([category], map: "category")
 }
+
+/// Links to other IT systems, managed on the admin "Other systems" page. IAMS reads them too
+/// (through GET /api/system-links) and lists them in its own sidebar.
+model system_links {
+  id          Int      @id @default(autoincrement())
+  name        String   @db.VarChar(80)
+  url         String   @db.VarChar(500)
+  description String?  @db.VarChar(200)
+  created_by  String?  @db.VarChar(255)
+  created_at  DateTime @default(now()) @db.DateTime(0)
+  updated_at  DateTime @default(now()) @updatedAt @db.DateTime(0)
+}

@@ -1,68 +1,279 @@
 @import "tailwindcss";
 
+/* Dark mode follows the `dark` class on <html>, set before paint by the inline script in app/layout.tsx. */
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Every colour token resolves through a raw variable below, so one class on <html> swaps the
+ * whole app between light and dark. Token names are kept from the original theme so existing
+ * pages pick up the new palette without being rewritten.
+ */
 :root {
-  --background: #f7f7f5;
-  --foreground: #1e293b;
+  --paper: #f8fafc;
+  --surface: #ffffff;
+  --surface-2: #f1f5f9;
+  --ink: #111827;
+  --ink-2: #0b1220;
+  --primary: #6e56cf;
+  --primary-hover: #5b45b8;
+  --primary-light: #c4b8f5;
+  --primary-soft: #f1edfd;
+  --muted: #475569;
+  --muted-2: #64748b;
+  --faint: #7c8799;
+  --card-border: #e5e7eb;
+  --divider: #f1f5f9;
+  --nav-text: #cbd5e1;
+  --navy: #111827;
+  --sidebar: #111827;
+  --sidebar-border: rgba(255, 255, 255, 0.08);
+  --ring: #6e56cf;
+
+  --amber-bg: #fffbeb;
+  --amber-border: #fde68a;
+  --amber-text: #92400e;
+  --amber-text-strong: #92400e;
+  --result-bg: #eff6ff;
+  --result-border: #bfdbfe;
+  --pill-bg: #f1f5f9;
+  --pill-border: #e2e8f0;
+  --pill-text: #334155;
+
+  --violet: #7c3aed;
+  --violet-light: #ede9fe;
+  --violet-text: #5b21b6;
+  --indigo: #4f46e5;
+  --indigo-light: #e0e7ff;
+  --indigo-text: #4338ca;
+  --blue: #2563eb;
+  --blue-light: #dbeafe;
+  --blue-text: #1d4ed8;
+  --rose: #e11d48;
+  --rose-light: #ffe4e6;
+  --rose-text: #be123c;
+  --emerald: #059669;
+  --emerald-light: #d1fae5;
+  --emerald-text: #047857;
+  --amber-solid: #d97706;
+  --teal: #0d9488;
+  --teal-light: #ccfbf1;
+  --teal-text: #0f766e;
+  --slate: #64748b;
+  --slate-light: #f1f5f9;
+  --slate-text: #475569;
+  --lime: #65a30d;
+  --lime-bright: #a3e635;
+  --lime-soft: #ecfccb;
+
+  /* Priority pills: deep text and icon on a soft tint of the same hue (AA contrast on the tint). */
+  --prio-high: #c5302e;
+  --prio-high-bg: #fdecea;
+  --prio-normal: #1a5fd0;
+  --prio-normal-bg: #e5efff;
+  --prio-low: #137543;
+  --prio-low-bg: #e1f6e8;
+
+  /* Extra chart hues, used with --primary (violet) and --lime-bright for categorical series. */
+  --chart-sky: #38bdf8;
+  --chart-pink: #f472b6;
+  --chart-amber: #f59e0b;
+
+  /* Fields and buttons: a hairline that is just visible, a touch stronger on hover. */
+  --field-border: rgba(15, 23, 42, 0.075);
+  --field-border-hover: rgba(15, 23, 42, 0.14);
+
+  --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.05);
+  --shadow-md: 0 4px 12px rgba(15, 23, 42, 0.08);
+  color-scheme: light;
+}
+
+.dark {
+  --paper: #0b0f17;
+  --surface: #111722;
+  --surface-2: #182031;
+  --ink: #e5e7eb;
+  --ink-2: #f8fafc;
+  --primary: #7f6df2;
+  --primary-hover: #9384f5;
+  --primary-light: #c4b8f5;
+  --primary-soft: rgba(127, 109, 242, 0.16);
+  --muted: #a3adbd;
+  --muted-2: #8b95a7;
+  --faint: #6b7588;
+  --card-border: #232b3a;
+  --divider: #1a2130;
+  --nav-text: #cbd5e1;
+  --navy: #1f2937;
+  --sidebar: #0a0e15;
+  --sidebar-border: rgba(255, 255, 255, 0.06);
+  --ring: #9384f5;
+  --prio-high: #fca5a5;
+  --prio-high-bg: rgba(239, 68, 68, 0.16);
+  --prio-normal: #93c5fd;
+  --prio-normal-bg: rgba(59, 130, 246, 0.16);
+  --prio-low: #86efac;
+  --prio-low-bg: rgba(34, 197, 94, 0.16);
+  --field-border: rgba(255, 255, 255, 0.07);
+  --field-border-hover: rgba(255, 255, 255, 0.14);
+
+  --amber-bg: rgba(217, 119, 6, 0.12);
+  --amber-border: rgba(217, 119, 6, 0.35);
+  --amber-text: #fcd34d;
+  --amber-text-strong: #fcd34d;
+  --result-bg: rgba(59, 130, 246, 0.12);
+  --result-border: rgba(59, 130, 246, 0.35);
+  --pill-bg: #1a2130;
+  --pill-border: #263042;
+  --pill-text: #cbd5e1;
+
+  --violet: #8b5cf6;
+  --violet-light: rgba(124, 58, 237, 0.18);
+  --violet-text: #c4b5fd;
+  --indigo: #6366f1;
+  --indigo-light: rgba(99, 102, 241, 0.2);
+  --indigo-text: #a5b4fc;
+  --blue: #3b82f6;
+  --blue-light: rgba(59, 130, 246, 0.18);
+  --blue-text: #93c5fd;
+  --rose: #f43f5e;
+  --rose-light: rgba(244, 63, 94, 0.16);
+  --rose-text: #fda4af;
+  --emerald: #10b981;
+  --emerald-light: rgba(16, 185, 129, 0.16);
+  --emerald-text: #6ee7b7;
+  --amber-solid: #f59e0b;
+  --teal: #14b8a6;
+  --teal-light: rgba(20, 184, 166, 0.16);
+  --teal-text: #5eead4;
+  --slate: #94a3b8;
+  --slate-light: #1a2130;
+  --slate-text: #cbd5e1;
+  --lime: #a3e635;
+  --lime-bright: #bef264;
+  --lime-soft: rgba(163, 230, 53, 0.14);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.4);
+  color-scheme: dark;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background: var(--paper);
+  --color-foreground: var(--ink);
 
-  --color-paper: #f7f7f5;
-  --color-ink: #1e293b;
-  --color-ink-2: #16212f;
-  --color-primary: #4f46e5;
-  --color-primary-light: #a5b4fc;
-  --color-muted: #475569;
-  --color-muted-2: #64748b;
-  --color-faint: #94a3b8;
-  --color-card-border: #dcdcd6;
-  --color-divider: #eceae3;
-  --color-nav-text: #e2e8f0;
+  --color-paper: var(--paper);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-primary-light: var(--primary-light);
+  --color-primary-soft: var(--primary-soft);
+  --color-muted: var(--muted);
+  --color-muted-2: var(--muted-2);
+  --color-faint: var(--faint);
+  --color-card-border: var(--card-border);
+  --color-divider: var(--divider);
+  --color-nav-text: var(--nav-text);
+  --color-navy: var(--navy);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-ring: var(--ring);
 
-  --color-amber-bg: #fef6ea;
-  --color-amber-border: #f0dcbe;
-  --color-amber-text: #6b5a3e;
-  --color-amber-text-strong: #7a6432;
+  --color-amber-bg: var(--amber-bg);
+  --color-amber-border: var(--amber-border);
+  --color-amber-text: var(--amber-text);
+  --color-amber-text-strong: var(--amber-text-strong);
+  --color-result-bg: var(--result-bg);
+  --color-result-border: var(--result-border);
+  --color-pill-bg: var(--pill-bg);
+  --color-pill-border: var(--pill-border);
+  --color-pill-text: var(--pill-text);
 
-  --color-result-bg: #f0f0fd;
-  --color-result-border: #c7d0fa;
+  --color-violet: var(--violet);
+  --color-violet-light: var(--violet-light);
+  --color-violet-text: var(--violet-text);
+  --color-indigo: var(--indigo);
+  --color-indigo-light: var(--indigo-light);
+  --color-indigo-text: var(--indigo-text);
+  --color-blue: var(--blue);
+  --color-blue-light: var(--blue-light);
+  --color-blue-text: var(--blue-text);
+  --color-rose: var(--rose);
+  --color-rose-light: var(--rose-light);
+  --color-rose-text: var(--rose-text);
+  --color-emerald: var(--emerald);
+  --color-emerald-light: var(--emerald-light);
+  --color-emerald-text: var(--emerald-text);
+  --color-amber-solid: var(--amber-solid);
+  --color-teal: var(--teal);
+  --color-teal-light: var(--teal-light);
+  --color-teal-text: var(--teal-text);
+  --color-slate: var(--slate);
+  --color-slate-light: var(--slate-light);
+  --color-slate-text: var(--slate-text);
+  --color-lime: var(--lime);
+  --color-lime-bright: var(--lime-bright);
+  --color-lime-soft: var(--lime-soft);
+  --color-prio-high: var(--prio-high);
+  --color-prio-normal: var(--prio-normal);
+  --color-prio-low: var(--prio-low);
+  --color-prio-high-bg: var(--prio-high-bg);
+  --color-prio-normal-bg: var(--prio-normal-bg);
+  --color-prio-low-bg: var(--prio-low-bg);
+  --color-chart-sky: var(--chart-sky);
+  --color-chart-pink: var(--chart-pink);
+  --color-chart-amber: var(--chart-amber);
+  --color-field-border: var(--field-border);
+  --color-field-border-hover: var(--field-border-hover);
 
-  --color-pill-bg: #eef2f6;
-  --color-pill-border: #dbe2ea;
-  --color-pill-text: #334155;
+  --shadow-card: var(--shadow-sm);
+  --shadow-pop: var(--shadow-md);
 
-  --color-violet: #7c3aed;
-  --color-violet-light: #ede9fe;
-  --color-violet-text: #5b21b6;
-
-  --color-blue: #2563eb;
-  --color-blue-light: #dbeafe;
-  --color-blue-text: #1d4ed8;
-
-  --color-rose: #e11d48;
-  --color-rose-light: #ffe4e6;
-  --color-rose-text: #be123c;
-
-  --color-emerald: #059669;
-  --color-emerald-light: #d1fae5;
-  --color-emerald-text: #047857;
-
-  --color-amber-solid: #d97706;
-
-  --color-teal: #0d9488;
-  --color-teal-light: #ccfbf1;
-  --color-teal-text: #0f766e;
-
-  --font-heading: var(--font-space-grotesk);
-  --font-body: var(--font-ibm-plex-sans);
-  --font-mono-plex: var(--font-ibm-plex-mono);
+  --font-heading: var(--font-inter);
+  --font-body: var(--font-inter);
+  /* No second typeface: "mono" text (ticket IDs, codes, <kbd>) is Inter as well. */
+  --font-mono-plex: var(--font-inter);
+  --font-sans: var(--font-inter);
+  --font-mono: var(--font-inter);
 }
 
 body {
-  background: var(--color-paper);
-  color: var(--color-ink);
+  background: var(--paper);
+  color: var(--ink);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+::selection {
+  background: var(--result-border);
+  color: var(--ink);
+}
+
+:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--ring) 60%, transparent);
+  outline-offset: 2px;
+}
+
+/*
+ * One focus style for every text field in the system: the border tints violet and a soft glow
+ * fades in around it, instead of a hard outline. Unlayered on purpose, so it wins over the
+ * older per-page focus classes and every field looks the same.
+ */
+:where(input:not([type="checkbox"], [type="radio"], [type="range"], [type="file"]), textarea, select):focus-visible {
+  outline: none;
+  border-color: color-mix(in srgb, var(--primary) 55%, transparent);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 14%, transparent);
+}
+
+@layer base {
+  /* In the base layer, so components that set their own transition still win. */
+  :where(input, textarea, select) {
+    transition:
+      border-color 150ms ease,
+      box-shadow 200ms ease;
+  }
 }
 
 @keyframes phn-pulse {
@@ -94,12 +305,114 @@ body {
   animation: phn-rise 0.35s ease-out;
 }
 
-.bg-admin-gradient {
-  background-image: linear-gradient(120deg, #1e1b4b 0%, #2e1065 55%, #4a044e 100%);
+/*
+ * Admin backdrop, fixed behind the content: soft violet and lime glows that echo the primary
+ * button and the "resolved" accent, a fine dot grid that fades out down the page, and a light
+ * film grain. Cards stay solid on top of it, so it adds atmosphere without touching legibility.
+ */
+.app-backdrop {
+  --glow-violet: rgba(110, 86, 207, 0.16);
+  --glow-lime: rgba(163, 230, 53, 0.16);
+  --dot: rgba(15, 23, 42, 0.075);
+  --grain: 0.045;
+  background:
+    radial-gradient(640px 420px at 88% -8%, var(--glow-violet), transparent 70%),
+    radial-gradient(520px 340px at 30% -10%, var(--glow-lime), transparent 70%),
+    radial-gradient(900px 600px at 50% 120%, var(--glow-violet), transparent 75%);
 }
 
+.dark .app-backdrop {
+  --glow-violet: rgba(127, 109, 242, 0.2);
+  --glow-lime: rgba(163, 230, 53, 0.07);
+  --dot: rgba(255, 255, 255, 0.055);
+  --grain: 0.06;
+}
+
+.app-backdrop::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(circle at 1px 1px, var(--dot) 1px, transparent 0);
+  background-size: 22px 22px;
+  mask-image: radial-gradient(ellipse 90% 65% at 60% 0%, #000 30%, transparent 100%);
+  -webkit-mask-image: radial-gradient(ellipse 90% 65% at 60% 0%, #000 30%, transparent 100%);
+}
+
+.app-backdrop::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: var(--grain);
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 1 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+/*
+ * Deep navy cards. Instead of giving every chart and label a dark variant, the card re-points the
+ * colour tokens for everything inside it: ink becomes near-white, muted text and hairlines become
+ * translucent white, and "surface" becomes the card itself (so cut-outs and chips blend in).
+ */
+.tile-ink {
+  --ink: #f8fafc;
+  --muted: rgb(255 255 255 / 0.74);
+  --muted-2: rgb(255 255 255 / 0.62);
+  --faint: rgb(255 255 255 / 0.45);
+  --card-border: rgb(255 255 255 / 0.12);
+  --divider: rgb(255 255 255 / 0.08);
+  --surface-2: rgb(255 255 255 / 0.07);
+  --surface: var(--navy);
+  background-color: var(--navy);
+  color: var(--ink);
+}
+
+/*
+ * Chart entrances: bars grow from their baseline once, on load. Only transform is animated, which
+ * the browser composites without re-layout, so nothing jumps or flickers.
+ */
+@keyframes phn-grow-x {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+@keyframes phn-grow-y {
+  from {
+    transform: scaleY(0);
+  }
+}
+
+@keyframes phn-draw {
+  from {
+    stroke-dasharray: 0 100;
+  }
+}
+
+.grow-x {
+  transform-origin: left center;
+  animation: phn-grow-x 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.grow-y {
+  transform-box: fill-box;
+  transform-origin: bottom;
+  animation: phn-grow-y 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.draw {
+  animation: phn-draw 1.1s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .grow-x,
+  .grow-y,
+  .draw {
+    animation: none;
+  }
+}
+
+/* Class names predate the redesign; both now render the flat navy used for the shell and primary dark surfaces. */
+.bg-admin-gradient,
 .bg-nav-gradient {
-  background-image: linear-gradient(120deg, #1e1b4b 0%, #2e1065 55%, #4a044e 100%);
+  background-color: var(--navy);
 }
 
 button:not(:disabled),
@@ -118,4 +431,14 @@ select:disabled,
 input[type="checkbox"]:disabled,
 input[type="radio"]:disabled {
   cursor: not-allowed;
+}
+
+/*
+ * Ticket IDs and other codes are set in Inter, so turn on its features that keep look-alike
+ * characters apart: slashed zero (0 vs O), serifed capital I (I vs l vs 1), and even-width digits.
+ */
+.font-mono-plex,
+kbd,
+code {
+  font-feature-settings: "zero", "cv08", "tnum";
 }

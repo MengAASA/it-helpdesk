@@ -276,7 +276,7 @@ function FilterDropdown({
         className={`flex w-full items-center justify-between gap-[9px] rounded-[10px] border px-[13.5px] py-[10.5px] text-[11px] font-medium transition-colors ${
           value
             ? "border-primary/40 bg-result-bg text-primary"
-            : "border-card-border bg-white text-ink hover:border-primary/25"
+            : "border-card-border bg-surface text-ink hover:border-primary/25"
         }`}
       >
         <span className="flex items-center gap-[7.5px]">
@@ -299,7 +299,7 @@ function FilterDropdown({
       {open && (
         <div
           ref={menuRef}
-          className={`animate-phn-rise absolute z-20 w-full overflow-hidden rounded-[10px] border border-card-border bg-white shadow-[0_10px_24px_rgba(15,23,42,0.14)] ${
+          className={`animate-phn-rise absolute z-20 w-full overflow-hidden rounded-[10px] border border-card-border bg-surface shadow-[0_10px_24px_rgba(15,23,42,0.14)] ${
             openUpward ? "bottom-full mb-[6px]" : "top-full mt-[6px]"
           }`}
         >
@@ -469,7 +469,7 @@ export default function Tickets() {
         <div className="flex flex-col gap-[15px] lg:sticky lg:top-[84px]">
           <form
             onSubmit={handleSearch}
-            className="flex flex-col gap-[13.5px] rounded-[14px] border border-card-border bg-white px-[18px] py-[18px] shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
+            className="flex flex-col gap-[13.5px] rounded-[14px] border border-card-border bg-surface px-[18px] py-[18px] shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
           >
             <SearchField
               id="ticketNumber"
@@ -477,7 +477,7 @@ export default function Tickets() {
               icon={Hash}
               value={ticketNumber}
               onChange={(e) => setTicketNumber(e.target.value)}
-              placeholder="e.g. TCK-XXXXXXX"
+              placeholder="e.g. TCK-7K3F-9Q2M"
             />
             <SearchField
               id="staffNo"
@@ -495,7 +495,7 @@ export default function Tickets() {
             <button
               type="submit"
               disabled={loading}
-              className="inline-flex items-center justify-center gap-[7.5px] whitespace-nowrap rounded-[9px] bg-admin-gradient px-[21px] py-[11.25px] text-[10.5px] font-semibold text-paper shadow-[0_4px_12px_rgba(46,16,101,0.3)] transition-transform hover:-translate-y-[1px] disabled:opacity-60 disabled:hover:translate-y-0"
+              className="inline-flex items-center justify-center gap-[7.5px] whitespace-nowrap rounded-[9px] bg-admin-gradient px-[21px] py-[11.25px] text-[10.5px] font-semibold text-white shadow-[0_4px_12px_rgba(46,16,101,0.3)] transition-transform hover:-translate-y-[1px] disabled:opacity-60 disabled:hover:translate-y-0"
             >
               <Search size={13} strokeWidth={2.25} />
               {loading ? "Searching…" : "Search"}
@@ -711,7 +711,7 @@ export default function Tickets() {
                               />
                               <Link
                                 href={`/tickets/${t.ticketNumber}`}
-                                className="inline-flex items-center gap-[4.5px] rounded-full border border-[color:var(--color-blue)]/25 bg-[color:var(--color-blue-light)] px-[9px] py-[4.5px] text-[9.75px] font-semibold text-[color:var(--color-blue-text)] transition-colors hover:bg-[color:var(--color-blue)] hover:text-paper"
+                                className="inline-flex items-center gap-[4.5px] rounded-full border border-[color:var(--color-blue)]/25 bg-[color:var(--color-blue-light)] px-[9px] py-[4.5px] text-[9.75px] font-semibold text-[color:var(--color-blue-text)] transition-colors hover:bg-[color:var(--color-blue)] hover:text-white"
                               >
                                 {t.ticketNumber}
                               </Link>
@@ -770,7 +770,7 @@ export default function Tickets() {
                         type="button"
                         onClick={() => setPage((p) => Math.max(1, p - 1))}
                         disabled={currentPage === 1}
-                        className="inline-flex items-center gap-[4.5px] rounded-[7.5px] border border-card-border bg-white px-[10.5px] py-[6px] text-[9.75px] font-semibold text-ink transition-colors hover:border-primary/40 disabled:cursor-not-allowed disabled:opacity-45"
+                        className="inline-flex items-center gap-[4.5px] rounded-[7.5px] border border-card-border bg-surface px-[10.5px] py-[6px] text-[9.75px] font-semibold text-ink transition-colors hover:border-primary/40 disabled:cursor-not-allowed disabled:opacity-45"
                       >
                         <ChevronLeft size={12} strokeWidth={2.5} />
                         Prev
@@ -784,7 +784,7 @@ export default function Tickets() {
                           setPage((p) => Math.min(totalPages, p + 1))
                         }
                         disabled={currentPage === totalPages}
-                        className="inline-flex items-center gap-[4.5px] rounded-[7.5px] border border-card-border bg-white px-[10.5px] py-[6px] text-[9.75px] font-semibold text-ink transition-colors hover:border-primary/40 disabled:cursor-not-allowed disabled:opacity-45"
+                        className="inline-flex items-center gap-[4.5px] rounded-[7.5px] border border-card-border bg-surface px-[10.5px] py-[6px] text-[9.75px] font-semibold text-ink transition-colors hover:border-primary/40 disabled:cursor-not-allowed disabled:opacity-45"
                       >
                         Next
                         <ChevronRight size={12} strokeWidth={2.5} />

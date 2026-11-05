@@ -2,13 +2,73 @@ import { prisma } from "@/app/lib/db";
 
 export type CountRow = { label: string; count: number };
 
-export async function countBy(column: "status" | "team" | "priority"): Promise<CountRow[]> {
+export async function countBy(
+  column: "status" | "team" | "priority" | "category" | "department" | "location"
+): Promise<CountRow[]> {
   const rows = await prisma.tickets.groupBy({
     by: [column],
     _count: true,
     orderBy: { _count: { id: "desc" } },
   });
   return rows.map((r) => ({ label: r[column], count: r._count }));
+}
+
+export type WeekFlow = { key: string; label: string; created: number; resolved: number };
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Monday 00:00 of the week containing `d`, in the server's time zone (the same zone every other date label uses). */
+function startOfWeek(d: Date): Date {
+  const out = new Date(d);
+  out.setHours(0, 0, 0, 0);
+  out.setDate(out.getDate() - ((out.getDay() + 6) % 7));
+  return out;
+}
+
+/**
+ * Tickets created and tickets closed in each of the last `weeks` calendar weeks, ending with the
+ * current week (so quiet weeks show as real zeros, not as a window that stops at the newest
+ * ticket). "Closed" counts each ticket once per week in which a status change to Closed was
+ * logged; closures from before event logging existed can't be dated, so they aren't counted.
+ */
+export async function getWeeklyFlow(now: number, weeks = 12): Promise<WeekFlow[]> {
+  const thisWeek = startOfWeek(new Date(now));
+  const starts = Array.from({ length: weeks }, (_, i) => {
+    const s = new Date(thisWeek);
+    s.setDate(s.getDate() - (weeks - 1 - i) * 7);
+    return s;
+  });
+  const rangeStart = starts[0];
+
+  const [created, closures] = await Promise.all([
+    prisma.tickets.findMany({ where: { created_at: { gte: rangeStart } }, select: { created_at: true } }),
+    prisma.ticket_events.findMany({
+      where: { event_type: "status", to_value: "Closed", created_at: { gte: rangeStart } },
+      select: { ticket_id: true, created_at: true },
+    }),
+  ]);
+
+  // Whole weeks since rangeStart; rounding absorbs any daylight-saving hour.
+  const weekIndex = (d: Date) => Math.round((startOfWeek(d).getTime() - rangeStart.getTime()) / (7 * DAY_MS));
+
+  const createdPerWeek = new Array<number>(weeks).fill(0);
+  for (const t of created) {
+    const i = weekIndex(t.created_at);
+    if (i >= 0 && i < weeks) createdPerWeek[i] += 1;
+  }
+
+  const closedPerWeek = Array.from({ length: weeks }, () => new Set<number>());
+  for (const e of closures) {
+    const i = weekIndex(e.created_at);
+    if (i >= 0 && i < weeks) closedPerWeek[i].add(e.ticket_id);
+  }
+
+  return starts.map((start, i) => ({
+    key: start.toISOString(),
+    label: `${start.getDate()} ${start.toLocaleDateString("en-US", { month: "short" })}`,
+    created: createdPerWeek[i],
+    resolved: closedPerWeek[i].size,
+  }));
 }
 
 export type AgentRow = {
