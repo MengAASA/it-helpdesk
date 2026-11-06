@@ -1,27 +1,15 @@
 "use client";
 
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { motion } from "framer-motion";
-import {
-  Search,
-  Hash,
-  IdCard,
-  AlertTriangle,
-  SearchX,
-  ChevronRight,
-  ChevronLeft,
-  ChevronDown,
-  Check,
-  MessageSquareText,
-  ArrowUp,
-  ArrowDown,
-  ArrowUpDown,
-  Inbox,
-  Filter,
-  X,
-} from "lucide-react";
-import Avatar from "@/app/components/Avatar";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { AnimatePresence, motion } from "framer-motion";
+import { ArrowRight, ArrowUpDown, Check, ChevronRight, Loader2, MessageSquareText, Paperclip, Search, SearchX, X } from "lucide-react";
+import FilterDropdown from "@/app/components/FilterDropdown";
+import { PriorityBadge, StatusDot } from "@/app/components/TicketBadges";
+import { useDismiss } from "@/app/components/useDismiss";
+import { Pagination } from "@/app/admin/listParts";
+import { expandTicketInput } from "@/app/lib/ticketNumberFormat";
 
 type Reply = {
   authorName: string;
@@ -44,108 +32,26 @@ type Ticket = {
   replies: Reply[];
 };
 
-function formatTimestamp(iso: string): string {
-  return new Date(iso).toLocaleString("en-US", {
-    dateStyle: "medium",
-    timeStyle: "short",
-  });
-}
-
+const EASE = [0.22, 1, 0.36, 1] as const;
 const STATUSES = ["Open", "In Progress", "Closed"] as const;
-const PRIORITIES = ["High", "Normal", "Low"] as const;
-
-const STATUS_STYLES: Record<string, string> = {
-  Open: "border-[color:var(--color-blue)]/25 bg-[color:var(--color-blue-light)] text-[color:var(--color-blue-text)]",
-  "In Progress": "border-amber-border bg-amber-bg text-amber-text-strong",
-  Closed:
-    "border-[color:var(--color-emerald)]/25 bg-[color:var(--color-emerald-light)] text-[color:var(--color-emerald-text)]",
-};
-
-const STATUS_DOT: Record<string, string> = {
-  Open: "bg-[color:var(--color-blue)]",
-  "In Progress": "bg-amber-solid",
-  Closed: "bg-[color:var(--color-emerald)]",
-};
-
-const PRIORITY_STYLES: Record<string, string> = {
-  High: "border-[color:var(--color-rose)]/25 bg-[color:var(--color-rose-light)] text-[color:var(--color-rose-text)]",
-  Normal: "border-pill-border bg-pill-bg text-pill-text",
-  Low: "border-[color:var(--color-emerald)]/25 bg-[color:var(--color-emerald-light)] text-[color:var(--color-emerald-text)]",
-};
-
-const PRIORITY_BAR: Record<string, string> = {
-  High: "bg-[color:var(--color-rose)]",
-  Normal: "bg-[color:var(--color-blue)]/50",
-  Low: "bg-[color:var(--color-emerald)]/60",
-};
-
-function SearchField({
-  id,
-  label,
-  icon: Icon,
-  value,
-  onChange,
-  placeholder,
-}: {
-  id: string;
-  label: string;
-  icon: typeof Hash;
-  value: string;
-  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  placeholder?: string;
-}) {
-  const [focused, setFocused] = useState(false);
-  const floated = focused || value.length > 0;
-  return (
-    <div className="relative">
-      <Icon
-        size={13}
-        strokeWidth={2}
-        className={`pointer-events-none absolute left-[12px] top-[19.5px] transition-colors ${
-          floated ? "text-primary" : "text-faint"
-        }`}
-      />
-      <input
-        id={id}
-        type="text"
-        value={value}
-        onChange={onChange}
-        onFocus={() => setFocused(true)}
-        onBlur={() => setFocused(false)}
-        placeholder={floated ? placeholder : ""}
-        className="w-full rounded-[9px] border border-card-border bg-paper py-[8.25px] pb-[8.25px] pl-[33px] pr-[12px] pt-[19.5px] font-body text-[12px] text-ink outline-none transition-colors focus:border-primary focus:ring-[3px] focus:ring-primary/10"
-      />
-      <label
-        htmlFor={id}
-        className={`pointer-events-none absolute left-[33px] transition-all duration-150 ${
-          floated
-            ? "top-[6px] text-[8.5px] font-semibold uppercase tracking-[0.12em] text-primary"
-            : "top-[14px] text-[12px] text-faint"
-        }`}
-      >
-        {label}
-      </label>
-    </div>
-  );
-}
+const PRIORITIES = ["High", "Normal", "Low"];
+const PAGE_SIZE = 20;
 
 type SortKey = "ticketNumber" | "name" | "status" | "priority" | "createdAt";
 type SortDir = "asc" | "desc";
 
 const PRIORITY_RANK: Record<string, number> = { High: 3, Normal: 2, Low: 1 };
-const STATUS_RANK: Record<string, number> = {
-  Open: 1,
-  "In Progress": 2,
-  Closed: 3,
-};
+const STATUS_RANK: Record<string, number> = { Open: 1, "In Progress": 2, Closed: 3 };
 
-const DEFAULT_SORT_DIR: Record<SortKey, SortDir> = {
-  ticketNumber: "asc",
-  name: "asc",
-  status: "asc",
-  priority: "desc",
-  createdAt: "desc",
-};
+/** Every way the list could be sorted before, as one menu. */
+const SORTS: { label: string; key: SortKey; dir: SortDir }[] = [
+  { label: "Newest first", key: "createdAt", dir: "desc" },
+  { label: "Oldest first", key: "createdAt", dir: "asc" },
+  { label: "Priority, high first", key: "priority", dir: "desc" },
+  { label: "Status", key: "status", dir: "asc" },
+  { label: "Ticket ID", key: "ticketNumber", dir: "asc" },
+  { label: "Requester A–Z", key: "name", dir: "asc" },
+];
 
 function sortValue(t: Ticket, key: SortKey): string | number {
   switch (key) {
@@ -162,233 +68,69 @@ function sortValue(t: Ticket, key: SortKey): string | number {
   }
 }
 
-function SortHeader({
-  label,
-  sortKey,
-  active,
-  dir,
-  onSort,
-}: {
-  label: string;
-  sortKey: SortKey;
-  active: boolean;
-  dir: SortDir;
-  onSort: (key: SortKey) => void;
-}) {
-  return (
-    <th className="px-[15px] py-[10.5px] font-semibold">
-      <button
-        type="button"
-        onClick={() => onSort(sortKey)}
-        className={`inline-flex items-center gap-[4.5px] transition-colors ${
-          active ? "text-ink" : "hover:text-ink"
-        }`}
-      >
-        {label}
-        {active ? (
-          dir === "asc" ? (
-            <ArrowUp size={10} strokeWidth={2.5} className="text-primary" />
-          ) : (
-            <ArrowDown size={10} strokeWidth={2.5} className="text-primary" />
-          )
-        ) : (
-          <ArrowUpDown size={10} strokeWidth={2.25} className="text-faint/70" />
-        )}
-      </button>
-    </th>
-  );
+function formatTimestamp(iso: string): string {
+  return new Date(iso).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
 }
 
-function FilterDropdown({
-  label,
-  allLabel,
-  options,
-  value,
-  onChange,
-  counts,
-  total,
-  dotClass,
-}: {
-  label: string;
-  allLabel: string;
-  options: readonly string[];
-  value: string | null;
-  onChange: (value: string | null) => void;
-  counts: Record<string, number>;
-  total: number;
-  dotClass: Record<string, string>;
-}) {
-  const [open, setOpen] = useState(false);
-  const [openUpward, setOpenUpward] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const menuRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const handleClickOutside = (e: MouseEvent) => {
-      if (
-        containerRef.current &&
-        !containerRef.current.contains(e.target as Node)
-      ) {
-        setOpen(false);
-      }
-    };
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setOpen(false);
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    document.addEventListener("keydown", handleKeyDown);
-    return () => {
-      document.removeEventListener("mousedown", handleClickOutside);
-      document.removeEventListener("keydown", handleKeyDown);
-    };
-  }, [open]);
-
-  useLayoutEffect(() => {
-    if (!open) return;
-    const container = containerRef.current;
-    const menu = menuRef.current;
-    if (!container || !menu) return;
-    const containerRect = container.getBoundingClientRect();
-    const spaceBelow = window.innerHeight - containerRect.bottom;
-    const spaceAbove = containerRect.top;
-    setOpenUpward(
-      spaceBelow < menu.offsetHeight + 12 && spaceAbove > spaceBelow,
-    );
-  }, [open]);
-
-  const items: { key: string | null; itemLabel: string; count: number }[] = [
-    { key: null, itemLabel: allLabel, count: total },
-    ...options.map((opt) => ({
-      key: opt,
-      itemLabel: opt,
-      count: counts[opt] ?? 0,
-    })),
-  ];
-
-  return (
-    <div className="relative" ref={containerRef}>
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-haspopup="listbox"
-        aria-expanded={open}
-        className={`flex w-full items-center justify-between gap-[9px] rounded-[10px] border px-[13.5px] py-[10.5px] text-[11px] font-medium transition-colors ${
-          value
-            ? "border-primary/40 bg-result-bg text-primary"
-            : "border-card-border bg-surface text-ink hover:border-primary/25"
-        }`}
-      >
-        <span className="flex items-center gap-[7.5px]">
-          {value ? (
-            <span
-              className={`h-[7.5px] w-[7.5px] rounded-full ${dotClass[value]}`}
-            />
-          ) : (
-            <Filter size={12} strokeWidth={2.25} className="text-faint" />
-          )}
-          {value ?? label}
-        </span>
-        <ChevronDown
-          size={13}
-          strokeWidth={2.25}
-          className={`shrink-0 transition-transform ${value ? "text-primary" : "text-faint"} ${open ? "rotate-180" : ""}`}
-        />
-      </button>
-
-      {open && (
-        <div
-          ref={menuRef}
-          className={`animate-phn-rise absolute z-20 w-full overflow-hidden rounded-[10px] border border-card-border bg-surface shadow-[0_10px_24px_rgba(15,23,42,0.14)] ${
-            openUpward ? "bottom-full mb-[6px]" : "top-full mt-[6px]"
-          }`}
-        >
-          <ul role="listbox" className="py-[4.5px]">
-            {items.map((opt) => {
-              const active = value === opt.key;
-              return (
-                <li
-                  key={opt.itemLabel}
-                  role="option"
-                  aria-selected={active}
-                  onClick={() => {
-                    onChange(opt.key);
-                    setOpen(false);
-                  }}
-                  className={`flex cursor-pointer items-center justify-between gap-[9px] px-[13.5px] py-[9px] text-[11px] ${
-                    active
-                      ? "bg-result-bg text-primary"
-                      : "text-ink hover:bg-paper"
-                  }`}
-                >
-                  <span className="flex items-center gap-[7.5px]">
-                    {opt.key ? (
-                      <span
-                        className={`h-[7.5px] w-[7.5px] rounded-full ${dotClass[opt.key]}`}
-                      />
-                    ) : (
-                      <span className="h-[7.5px] w-[7.5px] rounded-full border border-card-border" />
-                    )}
-                    {opt.itemLabel}
-                  </span>
-                  <span className="flex items-center gap-[6px]">
-                    <span className="font-mono-plex text-[9.5px] text-muted-2">
-                      {opt.count}
-                    </span>
-                    {active && (
-                      <Check
-                        size={12}
-                        strokeWidth={2.5}
-                        className="text-primary"
-                      />
-                    )}
-                  </span>
-                </li>
-              );
-            })}
-          </ul>
-        </div>
-      )}
-    </div>
-  );
+/** "just now", "3 hours ago", "2 days ago", then the date once it's older than a month. */
+function timeAgo(iso: string, now: number): string {
+  const diff = Math.max(0, now - new Date(iso).getTime());
+  const minutes = Math.round(diff / 60000);
+  if (minutes < 1) return "just now";
+  const rtf = new Intl.RelativeTimeFormat("en", { numeric: "auto" });
+  if (minutes < 60) return rtf.format(-minutes, "minute");
+  const hours = Math.round(minutes / 60);
+  if (hours < 24) return rtf.format(-hours, "hour");
+  const days = Math.round(hours / 24);
+  if (days < 30) return rtf.format(-days, "day");
+  return new Date(iso).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" });
 }
-
-const PAGE_SIZE = 20;
 
 export default function Tickets() {
-  const [ticketNumber, setTicketNumber] = useState("");
-  const [staffNo, setStaffNo] = useState("");
+  return (
+    <Suspense fallback={null}>
+      <TicketsLookup />
+    </Suspense>
+  );
+}
+
+function TicketsLookup() {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const [ticketNumber, setTicketNumber] = useState(searchParams.get("ticket") ?? "");
+  const [staffNo, setStaffNo] = useState(searchParams.get("staff") ?? "");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<Ticket[] | null>(null);
+  const [now, setNow] = useState(0);
   const [sortKey, setSortKey] = useState<SortKey>("createdAt");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
-  const [priorityFilter, setPriorityFilter] = useState<string | null>(null);
+  const [priorityFilter, setPriorityFilter] = useState("All");
   const [page, setPage] = useState(1);
+  const resultsRef = useRef<HTMLDivElement>(null);
 
-  const handleSearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!ticketNumber.trim() && !staffNo.trim()) {
-      setError("Enter a ticket number or staff ID.");
+  async function runSearch(ticket: string, staff: string) {
+    if (!ticket.trim() && !staff.trim()) {
+      setError("Enter a ticket ID or your staff ID.");
       return;
     }
     setLoading(true);
     setError(null);
     try {
       const params = new URLSearchParams();
-      if (ticketNumber.trim()) params.set("ticketNumber", ticketNumber.trim());
-      if (staffNo.trim()) params.set("staffNo", staffNo.trim());
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/tickets?${params.toString()}`,
-      );
+      if (ticket.trim()) params.set("ticketNumber", expandTicketInput(ticket));
+      if (staff.trim()) params.set("staffNo", staff.trim());
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/api/tickets?${params.toString()}`);
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Could not look up tickets");
       setResults(data);
+      setNow(Date.now());
       setSortKey("createdAt");
       setSortDir("desc");
       setStatusFilter(null);
-      setPriorityFilter(null);
+      setPriorityFilter("All");
       setPage(1);
     } catch (err) {
       setError((err as Error).message);
@@ -396,35 +138,29 @@ export default function Tickets() {
     } finally {
       setLoading(false);
     }
+  }
+
+  const handleSearch = (e: React.FormEvent) => {
+    e.preventDefault();
+    // Keep the search in the address, so Back from a ticket brings the results back.
+    const q = new URLSearchParams();
+    if (ticketNumber.trim()) q.set("ticket", ticketNumber.trim());
+    if (staffNo.trim()) q.set("staff", staffNo.trim());
+    router.replace(q.size ? `${pathname}?${q.toString()}` : pathname, { scroll: false });
+    void runSearch(ticketNumber, staffNo);
   };
 
-  const toggleSort = (key: SortKey) => {
-    if (key === sortKey) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    } else {
-      setSortKey(key);
-      setSortDir(DEFAULT_SORT_DIR[key]);
-    }
-    setPage(1);
-  };
+  // Arriving with a search in the address (e.g. coming back from a ticket) runs it straight away.
+  const initialSearch = useRef({ ticket: searchParams.get("ticket") ?? "", staff: searchParams.get("staff") ?? "" });
+  useEffect(() => {
+    const { ticket, staff } = initialSearch.current;
+    if (ticket || staff) void runSearch(ticket, staff);
+  }, []);
 
   const statusCounts = useMemo(() => {
-    if (!results) return null;
-    const byStatus: Record<string, number> = {
-      Open: 0,
-      "In Progress": 0,
-      Closed: 0,
-    };
-    for (const t of results) byStatus[t.status] = (byStatus[t.status] ?? 0) + 1;
-    return byStatus;
-  }, [results]);
-
-  const priorityCounts = useMemo(() => {
-    if (!results) return null;
-    const byPriority: Record<string, number> = { High: 0, Normal: 0, Low: 0 };
-    for (const t of results)
-      byPriority[t.priority] = (byPriority[t.priority] ?? 0) + 1;
-    return byPriority;
+    const counts: Record<string, number> = { Open: 0, "In Progress": 0, Closed: 0 };
+    for (const t of results ?? []) counts[t.status] = (counts[t.status] ?? 0) + 1;
+    return counts;
   }, [results]);
 
   const sorted = useMemo(() => {
@@ -442,361 +178,460 @@ export default function Tickets() {
     () =>
       sorted
         .filter((t) => !statusFilter || t.status === statusFilter)
-        .filter((t) => !priorityFilter || t.priority === priorityFilter),
-    [sorted, statusFilter, priorityFilter],
+        .filter((t) => priorityFilter === "All" || t.priority === priorityFilter),
+    [sorted, statusFilter, priorityFilter]
   );
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
-  const pageItems = filtered.slice(
-    (currentPage - 1) * PAGE_SIZE,
-    currentPage * PAGE_SIZE,
-  );
+  const pageItems = filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  const requesters = Array.from(new Set((results ?? []).map((t) => t.name)));
+  const hasFilters = !!statusFilter || priorityFilter !== "All";
+
+  function goToPage(p: number) {
+    setPage(p);
+    resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
 
   return (
-    <main className="mx-auto flex w-full max-w-[1600px] flex-1 flex-col gap-[27px] px-[42px] pb-[67.5px] pt-[42px]">
-      <div className="flex flex-col gap-[10.5px]">
-        <h1 className="font-heading text-[27px] font-semibold tracking-[-0.02em]">
-          View my tickets
-        </h1>
-        <p className="max-w-[495px] text-[12.75px] leading-[1.6] text-muted">
-          Enter your ticket number or staff ID to check the status of tickets
-          you have submitted.
+    <main className="mx-auto flex w-full max-w-[1120px] flex-1 flex-col gap-[20px] px-[16px] pb-[56px] pt-[28px] md:px-[32px] md:pt-[40px]">
+      <div className="flex flex-col gap-[4px]">
+        <h1 className="text-[22px] font-semibold tracking-[-0.02em] text-ink">Your tickets</h1>
+        <p className="max-w-[520px] text-[13px] leading-[20px] text-muted-2">
+          Check where your requests are up to, read replies from IT, and add more information.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 gap-[21px] lg:grid-cols-[270px_1fr] lg:items-start">
-        <div className="flex flex-col gap-[15px] lg:sticky lg:top-[84px]">
-          <form
-            onSubmit={handleSearch}
-            className="flex flex-col gap-[13.5px] rounded-[14px] border border-card-border bg-surface px-[18px] py-[18px] shadow-[0_1px_2px_rgba(15,23,42,0.04)]"
+      {/* The lookup: dark, front and centre. */}
+      <form onSubmit={handleSearch} className="tile-ink @container rounded-[18px] p-[16px] md:p-[20px]">
+        <div className="flex flex-col gap-[12px] @min-[720px]:flex-row @min-[720px]:items-end">
+          <LookupField
+            id="ticketNumber"
+            label="Ticket ID"
+            hint="Opens that one ticket"
+            placeholder="TCK-7K3F-9Q2M"
+            value={ticketNumber}
+            onChange={setTicketNumber}
+            mono
+          />
+          <span className="flex items-center gap-[10px] text-[12px] text-muted-2 @min-[720px]:h-[40px]" aria-hidden="true">
+            <span className="h-px flex-1 bg-white/10 @min-[720px]:hidden" />
+            or
+            <span className="h-px flex-1 bg-white/10 @min-[720px]:hidden" />
+          </span>
+          <LookupField
+            id="staffNo"
+            label="Staff ID"
+            hint="Shows everything you've raised"
+            placeholder="e.g. M0750"
+            value={staffNo}
+            onChange={setStaffNo}
+          />
+          <button
+            type="submit"
+            disabled={loading}
+            className="group inline-flex h-[40px] shrink-0 items-center justify-center gap-[8px] rounded-[10px] bg-primary px-[18px] text-[13px] font-medium text-white transition-[background-color,transform] duration-150 hover:bg-primary-hover active:scale-[0.98] disabled:opacity-60"
           >
-            <SearchField
-              id="ticketNumber"
-              label="Ticket Number"
-              icon={Hash}
-              value={ticketNumber}
-              onChange={(e) => setTicketNumber(e.target.value)}
-              placeholder="e.g. TCK-7K3F-9Q2M"
-            />
-            <SearchField
-              id="staffNo"
-              label="Staff No"
-              icon={IdCard}
-              value={staffNo}
-              onChange={(e) => setStaffNo(e.target.value)}
-            />
-            {error && (
-              <div className="flex items-center gap-[7.5px] rounded-[7.5px] border border-amber-border bg-amber-bg px-[12px] py-[9px] text-[9.75px] text-amber-text-strong">
-                <AlertTriangle size={12} strokeWidth={2.25} />
-                {error}
-              </div>
-            )}
-            <button
-              type="submit"
-              disabled={loading}
-              className="inline-flex items-center justify-center gap-[7.5px] whitespace-nowrap rounded-[9px] bg-admin-gradient px-[21px] py-[11.25px] text-[10.5px] font-semibold text-white shadow-[0_4px_12px_rgba(46,16,101,0.3)] transition-transform hover:-translate-y-[1px] disabled:opacity-60 disabled:hover:translate-y-0"
+            {loading ? <Loader2 size={14} strokeWidth={2} className="animate-spin" /> : <Search size={14} strokeWidth={2} />}
+            {loading ? "Looking…" : "Find tickets"}
+          </button>
+        </div>
+        <AnimatePresence initial={false}>
+          {error && (
+            <motion.p
+              role="alert"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="overflow-hidden text-[13px] text-chart-pink"
             >
-              <Search size={13} strokeWidth={2.25} />
-              {loading ? "Searching…" : "Search"}
-            </button>
-          </form>
+              <span className="block pt-[12px]">{error}</span>
+            </motion.p>
+          )}
+        </AnimatePresence>
+      </form>
 
-          {results && results.length > 0 && statusCounts && priorityCounts && (
-            <div className="flex flex-col gap-[15px]">
-              <div className="flex items-center justify-between px-[3px]">
-                <span className="text-[9px] font-semibold uppercase tracking-[0.14em] text-faint">
-                  Filters
-                </span>
-                {(statusFilter || priorityFilter) && (
+      <div ref={resultsRef} className="scroll-mt-[72px]">
+        <AnimatePresence mode="wait" initial={false}>
+          {loading && !results ? (
+            <motion.div key="loading" {...fade}>
+              <SkeletonList />
+            </motion.div>
+          ) : results === null ? (
+            <motion.div key="start" {...fade}>
+              <StartHints />
+            </motion.div>
+          ) : results.length === 0 ? (
+            <motion.div key="none" {...fade} className="flex flex-col items-center gap-[6px] rounded-[16px] border border-card-border/70 bg-surface px-[20px] py-[48px] text-center">
+              <span className="mb-[4px] flex h-[36px] w-[36px] items-center justify-center rounded-full bg-surface-2 text-muted-2">
+                <SearchX size={16} strokeWidth={1.75} />
+              </span>
+              <p className="text-[13px] font-medium text-ink">No tickets found</p>
+              <p className="max-w-[340px] text-[13px] leading-[20px] text-muted-2">
+                Double-check the ticket ID or staff ID. Ticket IDs look like TCK-7K3F-9Q2M.
+              </p>
+            </motion.div>
+          ) : (
+            <motion.div key="results" {...fade} className={`flex flex-col gap-[12px] transition-opacity ${loading ? "opacity-60" : ""}`}>
+              <div className="flex flex-wrap items-center justify-between gap-[10px]">
+                <div className="flex min-w-0 flex-col">
+                  <span className="truncate text-[15px] font-semibold tracking-[-0.01em] text-ink">
+                    {requesters.length === 1 ? requesters[0] : `${results.length} tickets`}
+                  </span>
+                  <span className="text-[12px] tabular-nums text-muted-2">
+                    {results.length} {results.length === 1 ? "ticket" : "tickets"} · {statusCounts.Open + statusCounts["In Progress"]} still open
+                  </span>
+                </div>
+                <div className="flex flex-wrap items-center gap-[8px]">
+                  <FilterDropdown
+                    label="Priority"
+                    value={priorityFilter}
+                    onChange={(v) => {
+                      setPriorityFilter(v);
+                      setPage(1);
+                    }}
+                    options={PRIORITIES}
+                  />
+                  <SortMenu
+                    value={SORTS.findIndex((s) => s.key === sortKey && s.dir === sortDir)}
+                    onChange={(i) => {
+                      setSortKey(SORTS[i].key);
+                      setSortDir(SORTS[i].dir);
+                      setPage(1);
+                    }}
+                  />
+                </div>
+              </div>
+
+              <StatusTabs
+                counts={statusCounts}
+                total={results.length}
+                value={statusFilter}
+                onChange={(v) => {
+                  setStatusFilter(v);
+                  setPage(1);
+                }}
+              />
+
+              {filtered.length === 0 ? (
+                <div className="flex flex-col items-center gap-[8px] rounded-[16px] border border-card-border/70 bg-surface px-[20px] py-[40px] text-center">
+                  <p className="text-[13px] font-medium text-ink">Nothing matches these filters</p>
                   <button
                     type="button"
                     onClick={() => {
                       setStatusFilter(null);
-                      setPriorityFilter(null);
+                      setPriorityFilter("All");
                       setPage(1);
                     }}
-                    className="inline-flex items-center gap-[3px] text-[9px] font-semibold text-primary transition-colors hover:text-primary/70"
+                    className="inline-flex h-[30px] items-center gap-[6px] rounded-[8px] border border-field-border px-[10px] text-[12px] text-ink transition-colors hover:bg-surface-2"
                   >
-                    <X size={10} strokeWidth={2.5} />
+                    <X size={13} strokeWidth={2} />
                     Clear filters
                   </button>
-                )}
-              </div>
-              <div className="flex flex-col gap-[7.5px]">
-                <span className="px-[3px] text-[9px] font-semibold uppercase tracking-[0.14em] text-faint">
-                  Filter by status
-                </span>
-                <FilterDropdown
-                  label="All statuses"
-                  allLabel="All statuses"
-                  options={STATUSES}
-                  value={statusFilter}
-                  onChange={(v) => {
-                    setStatusFilter(v);
-                    setPage(1);
-                  }}
-                  counts={statusCounts}
-                  total={results.length}
-                  dotClass={STATUS_DOT}
-                />
-              </div>
-              <div className="flex flex-col gap-[7.5px]">
-                <span className="px-[3px] text-[9px] font-semibold uppercase tracking-[0.14em] text-faint">
-                  Filter by priority
-                </span>
-                <FilterDropdown
-                  label="All priorities"
-                  allLabel="All priorities"
-                  options={PRIORITIES}
-                  value={priorityFilter}
-                  onChange={(v) => {
-                    setPriorityFilter(v);
-                    setPage(1);
-                  }}
-                  counts={priorityCounts}
-                  total={results.length}
-                  dotClass={PRIORITY_BAR}
-                />
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="flex flex-col gap-[13.5px]">
-          {results === null && (
-            <div className="flex flex-col items-center gap-[10.5px] rounded-[14px] border border-dashed border-card-border px-[27px] py-[60px] text-center">
-              <span className="flex h-[42px] w-[42px] items-center justify-center rounded-full bg-result-bg text-primary">
-                <Search size={18} strokeWidth={1.8} />
-              </span>
-              <p className="max-w-[300px] text-[11.25px] leading-[1.6] text-muted">
-                Your tickets will show up here once you search by ticket number
-                or staff ID.
-              </p>
-            </div>
-          )}
-
-          {results && results.length === 0 && (
-            <div className="flex flex-col items-center gap-[10.5px] rounded-[14px] border border-dashed border-card-border px-[27px] py-[60px] text-center">
-              <span className="flex h-[42px] w-[42px] items-center justify-center rounded-full bg-result-bg text-primary">
-                <SearchX size={18} strokeWidth={1.8} />
-              </span>
-              <p className="text-[12px] font-medium text-ink">
-                No tickets found
-              </p>
-              <p className="max-w-[300px] text-[11.25px] leading-[1.6] text-muted">
-                Double-check the ticket number or staff ID and try again.
-              </p>
-            </div>
-          )}
-
-          {results && results.length > 0 && (
-            <>
-              <div className="flex flex-wrap items-center justify-between gap-[9px]">
-                <span className="inline-flex items-center gap-[6px] text-[9.5px] font-medium text-faint">
-                  <Inbox size={11} strokeWidth={2} />
-                  {filtered.length} of {results.length} ticket
-                  {results.length > 1 ? "s" : ""}
-                  {statusFilter ? ` · ${statusFilter}` : ""}
-                  {priorityFilter ? ` · ${priorityFilter} priority` : ""}
-                </span>
-                {filtered.length > 0 && (
-                  <span className="text-[9.5px] text-faint">
-                    Showing {(currentPage - 1) * PAGE_SIZE + 1}–
-                    {Math.min(currentPage * PAGE_SIZE, filtered.length)} of{" "}
-                    {filtered.length}
-                  </span>
-                )}
-              </div>
-
-              {filtered.length === 0 ? (
-                <div className="flex flex-col items-center gap-[9px] rounded-[14px] border border-dashed border-card-border px-[27px] py-[45px] text-center">
-                  <span className="flex h-[36px] w-[36px] items-center justify-center rounded-full bg-result-bg text-primary">
-                    <SearchX size={16} strokeWidth={1.8} />
-                  </span>
-                  <p className="text-[11.25px] leading-[1.6] text-muted">
-                    No tickets match{statusFilter ? ` ${statusFilter}` : ""}
-                    {priorityFilter
-                      ? `${statusFilter ? " and" : ""} ${priorityFilter} priority`
-                      : ""}{" "}
-                    in this result set.
-                  </p>
                 </div>
               ) : (
-                <>
-                  <div className="overflow-hidden rounded-[14px] border border-card-border shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-                    <table className="w-full table-fixed border-collapse text-left text-[10.5px]">
-                      <colgroup>
-                        <col className="w-[36px]" />
-                        <col className="w-[210px]" />
-                        <col />
-                        <col className="w-[100px]" />
-                        <col className="w-[95px]" />
-                        <col className="w-[120px]" />
-                        <col className="w-[85px]" />
-                      </colgroup>
-                      <thead>
-                        <tr className="border-b border-card-border bg-result-bg/50 text-[9px] uppercase tracking-[0.06em] text-muted-2">
-                          <th className="px-[15px] py-[10.5px] font-semibold">
-                            #
-                          </th>
-                          <SortHeader
-                            label="Ticket #"
-                            sortKey="ticketNumber"
-                            active={sortKey === "ticketNumber"}
-                            dir={sortDir}
-                            onSort={toggleSort}
-                          />
-                          <SortHeader
-                            label="Requester"
-                            sortKey="name"
-                            active={sortKey === "name"}
-                            dir={sortDir}
-                            onSort={toggleSort}
-                          />
-                          <th className="px-[15px] py-[10.5px] font-semibold">
-                            Team
-                          </th>
-                          <SortHeader
-                            label="Status"
-                            sortKey="status"
-                            active={sortKey === "status"}
-                            dir={sortDir}
-                            onSort={toggleSort}
-                          />
-                          <SortHeader
-                            label="Submitted"
-                            sortKey="createdAt"
-                            active={sortKey === "createdAt"}
-                            dir={sortDir}
-                            onSort={toggleSort}
-                          />
-                          <SortHeader
-                            label="Priority"
-                            sortKey="priority"
-                            active={sortKey === "priority"}
-                            dir={sortDir}
-                            onSort={toggleSort}
-                          />
-                        </tr>
-                      </thead>
-                      <motion.tbody
-                        initial="hidden"
-                        animate="show"
-                        variants={{
-                          show: { transition: { staggerChildren: 0.03 } },
-                        }}
-                      >
-                        {pageItems.map((t, i) => (
-                          <motion.tr
-                            key={t.ticketNumber}
-                            variants={{
-                              hidden: { opacity: 0, y: 6 },
-                              show: { opacity: 1, y: 0 },
-                            }}
-                            transition={{ duration: 0.2, ease: "easeOut" }}
-                            className={`border-b border-divider transition-colors last:border-b-0 hover:bg-result-bg/40 ${
-                              i % 2 === 1 ? "bg-result-bg/20" : ""
-                            }`}
-                          >
-                            <td className="px-[15px] py-[12px] text-faint">
-                              {(currentPage - 1) * PAGE_SIZE + i + 1}
-                            </td>
-                            <td className="overflow-hidden whitespace-nowrap px-[15px] py-[12px] font-mono-plex">
-                              <span
-                                className={`mr-[9px] inline-block h-[7.5px] w-[7.5px] rounded-full align-middle ${
-                                  PRIORITY_BAR[t.priority] ??
-                                  PRIORITY_BAR.Normal
-                                }`}
-                              />
-                              <Link
-                                href={`/tickets/${t.ticketNumber}`}
-                                className="inline-flex items-center gap-[4.5px] rounded-full border border-[color:var(--color-blue)]/25 bg-[color:var(--color-blue-light)] px-[9px] py-[4.5px] text-[9.75px] font-semibold text-[color:var(--color-blue-text)] transition-colors hover:bg-[color:var(--color-blue)] hover:text-white"
-                              >
-                                {t.ticketNumber}
-                              </Link>
-                              {t.replies.length > 0 && (
-                                <span className="ml-[7.5px] inline-flex items-center gap-[3px] rounded-full border border-[color:var(--color-emerald)]/25 bg-[color:var(--color-emerald-light)] px-[6px] py-[1.5px] text-[8px] font-semibold text-[color:var(--color-emerald-text)]">
-                                  <MessageSquareText
-                                    size={9}
-                                    strokeWidth={2.5}
-                                  />
-                                  {t.replies.length}
-                                </span>
-                              )}
-                            </td>
-                            <td className="px-[15px] py-[12px] text-muted">
-                              <div className="flex min-w-0 items-center gap-[7.5px]">
-                                <Avatar name={t.name} size={22} />
-                                <span className="min-w-0 truncate text-ink">
-                                  {t.name}
-                                </span>
-                              </div>
-                            </td>
-                            <td className="truncate px-[15px] py-[12px] text-muted">
-                              {t.team}
-                            </td>
-                            <td className="whitespace-nowrap px-[15px] py-[12px]">
-                              <span
-                                className={`rounded-full border px-[8.25px] py-[3.75px] text-[9px] font-semibold ${
-                                  STATUS_STYLES[t.status] ?? STATUS_STYLES.Open
-                                }`}
-                              >
-                                {t.status}
-                              </span>
-                            </td>
-                            <td className="whitespace-nowrap px-[15px] py-[12px] text-[9px] text-faint">
-                              {formatTimestamp(t.createdAt)}
-                            </td>
-                            <td className="whitespace-nowrap px-[15px] py-[12px]">
-                              <span
-                                className={`rounded-full border px-[8.25px] py-[3.75px] text-[9px] font-semibold ${
-                                  PRIORITY_STYLES[t.priority] ??
-                                  PRIORITY_STYLES.Normal
-                                }`}
-                              >
-                                {t.priority}
-                              </span>
-                            </td>
-                          </motion.tr>
-                        ))}
-                      </motion.tbody>
-                    </table>
-                  </div>
-
-                  {totalPages > 1 && (
-                    <div className="flex items-center justify-between gap-[9px]">
-                      <button
-                        type="button"
-                        onClick={() => setPage((p) => Math.max(1, p - 1))}
-                        disabled={currentPage === 1}
-                        className="inline-flex items-center gap-[4.5px] rounded-[7.5px] border border-card-border bg-surface px-[10.5px] py-[6px] text-[9.75px] font-semibold text-ink transition-colors hover:border-primary/40 disabled:cursor-not-allowed disabled:opacity-45"
-                      >
-                        <ChevronLeft size={12} strokeWidth={2.5} />
-                        Prev
-                      </button>
-                      <span className="text-[9.5px] font-medium text-muted-2">
-                        Page {currentPage} of {totalPages}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setPage((p) => Math.min(totalPages, p + 1))
-                        }
-                        disabled={currentPage === totalPages}
-                        className="inline-flex items-center gap-[4.5px] rounded-[7.5px] border border-card-border bg-surface px-[10.5px] py-[6px] text-[9.75px] font-semibold text-ink transition-colors hover:border-primary/40 disabled:cursor-not-allowed disabled:opacity-45"
-                      >
-                        Next
-                        <ChevronRight size={12} strokeWidth={2.5} />
-                      </button>
-                    </div>
-                  )}
-                </>
+                <ul className="flex flex-col overflow-hidden rounded-[16px] border border-card-border/70 bg-surface">
+                  {pageItems.map((t, i) => (
+                    <motion.li
+                      key={t.ticketNumber}
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.25, delay: Math.min(i, 10) * 0.025, ease: EASE }}
+                      className="border-t border-card-border/60 first:border-t-0"
+                    >
+                      <TicketRow ticket={t} now={now} />
+                    </motion.li>
+                  ))}
+                </ul>
               )}
-            </>
+
+              {filtered.length > 0 && (
+                <div className="flex flex-wrap items-center justify-between gap-[8px]">
+                  <span className="text-[12px] tabular-nums text-muted-2">
+                    {hasFilters ? `${filtered.length} of ${results.length}` : `${results.length}`} {results.length === 1 ? "ticket" : "tickets"}
+                    {totalPages > 1 &&
+                      ` · showing ${(currentPage - 1) * PAGE_SIZE + 1}–${Math.min(currentPage * PAGE_SIZE, filtered.length)}`}
+                  </span>
+                  <Pagination page={currentPage} totalPages={totalPages} onPage={goToPage} />
+                </div>
+              )}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </main>
+  );
+}
+
+const fade = {
+  initial: { opacity: 0, y: 6 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0 },
+  transition: { duration: 0.2, ease: EASE },
+};
+
+function LookupField({
+  id,
+  label,
+  hint,
+  placeholder,
+  value,
+  onChange,
+  mono,
+}: {
+  id: string;
+  label: string;
+  hint: string;
+  placeholder: string;
+  value: string;
+  onChange: (v: string) => void;
+  mono?: boolean;
+}) {
+  return (
+    <div className="flex min-w-0 flex-1 flex-col gap-[6px]">
+      <label htmlFor={id} className="flex items-baseline justify-between gap-[8px] text-[12px]">
+        <span className="font-medium text-ink">{label}</span>
+        <span className="truncate text-muted-2">{hint}</span>
+      </label>
+      <div className="relative">
+        <input
+          id={id}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          autoComplete="off"
+          spellCheck={false}
+          className={`h-[40px] w-full rounded-[10px] border border-white/10 bg-white/[0.06] px-[12px] pr-[34px] text-[14px] text-ink outline-none transition-colors placeholder:text-faint hover:border-white/20 focus:bg-white/[0.09] ${
+            mono ? "uppercase tracking-[0.02em] placeholder:normal-case placeholder:tracking-normal" : ""
+          }`}
+        />
+        {value && (
+          <button
+            type="button"
+            onClick={() => onChange("")}
+            aria-label={`Clear ${label.toLowerCase()}`}
+            className="absolute right-[6px] top-1/2 flex h-[24px] w-[24px] -translate-y-1/2 items-center justify-center rounded-[6px] text-muted-2 transition-colors hover:bg-white/10 hover:text-ink"
+          >
+            <X size={13} strokeWidth={2} />
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** Before the first search: where to find each ID, instead of an empty box. */
+function StartHints() {
+  return (
+    <div className="grid gap-[12px] md:grid-cols-2">
+      <div className="rounded-[16px] border border-card-border/70 bg-surface p-[16px]">
+        <h2 className="text-[13px] font-semibold text-ink">Got a ticket ID?</h2>
+        <p className="mt-[4px] text-[13px] leading-[20px] text-muted-2">
+          It looks like <span className="font-medium tabular-nums text-ink">TCK-7K3F-9Q2M</span> and appears on screen right after you submit.
+          It opens that one ticket.
+        </p>
+      </div>
+      <div className="rounded-[16px] border border-card-border/70 bg-surface p-[16px]">
+        <h2 className="text-[13px] font-semibold text-ink">Use your staff ID</h2>
+        <p className="mt-[4px] text-[13px] leading-[20px] text-muted-2">
+          Lists every ticket raised with your staff number, newest first, so you can see them all in one place.
+        </p>
+      </div>
+      <Link
+        href="/submit"
+        className="group flex items-center justify-between gap-[12px] rounded-[16px] border border-card-border/70 bg-surface-2/50 px-[16px] py-[14px] text-[13px] text-muted transition-colors hover:bg-surface-2 md:col-span-2"
+      >
+        <span>
+          <span className="font-medium text-ink">Haven&apos;t raised one yet?</span> Describe the problem and Boboi will route it.
+        </span>
+        <span className="inline-flex shrink-0 items-center gap-[4px] font-medium text-primary">
+          Submit a ticket
+          <ArrowRight size={14} strokeWidth={2} className="transition-transform duration-200 group-hover:translate-x-[2px]" />
+        </span>
+      </Link>
+    </div>
+  );
+}
+
+function SkeletonList() {
+  return (
+    <div className="flex flex-col gap-[12px]" aria-label="Loading tickets" role="status">
+      <span className="h-[18px] w-[180px] animate-pulse rounded-[6px] bg-surface-2" />
+      <div className="overflow-hidden rounded-[16px] border border-card-border/70 bg-surface">
+        {[0, 1, 2, 3].map((i) => (
+          <div key={i} className="flex items-center gap-[14px] border-t border-card-border/60 px-[16px] py-[16px] first:border-t-0">
+            <div className="flex flex-1 flex-col gap-[8px]">
+              <span className="h-[14px] animate-pulse rounded-[5px] bg-surface-2" style={{ width: `${60 - i * 8}%` }} />
+              <span className="h-[11px] w-[40%] animate-pulse rounded-[5px] bg-surface-2/70" />
+            </div>
+            <span className="h-[22px] w-[90px] animate-pulse rounded-full bg-surface-2" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Status as tabs with counts; the pill slides to the chosen one. */
+function StatusTabs({
+  counts,
+  total,
+  value,
+  onChange,
+}: {
+  counts: Record<string, number>;
+  total: number;
+  value: string | null;
+  onChange: (v: string | null) => void;
+}) {
+  const tabs: { key: string | null; label: string; count: number }[] = [
+    { key: null, label: "All", count: total },
+    ...STATUSES.map((s) => ({ key: s as string, label: s as string, count: counts[s] ?? 0 })),
+  ];
+  return (
+    <div role="tablist" aria-label="Status" className="flex w-fit max-w-full items-center gap-[2px] overflow-x-auto rounded-[10px] border border-card-border/70 bg-surface p-[3px] [scrollbar-width:none]">
+      {tabs.map((t) => {
+        const active = value === t.key;
+        return (
+          <button
+            key={t.label}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => onChange(t.key)}
+            className={`relative flex h-[30px] shrink-0 items-center gap-[6px] rounded-[7px] px-[8px] text-[13px] sm:gap-[7px] sm:px-[11px] transition-colors ${active ? "text-paper" : "text-muted hover:text-ink"}`}
+          >
+            {active && (
+              <motion.span layoutId="ticket-status-tab" transition={{ type: "spring", stiffness: 420, damping: 34 }} className="absolute inset-0 rounded-[7px] bg-ink" />
+            )}
+            <span className="relative flex items-center gap-[7px]">
+              {t.key && <StatusDot status={t.key} />}
+              {t.label}
+              <span className={`text-[12px] tabular-nums ${active ? "text-paper/70" : "text-faint"}`}>{t.count}</span>
+            </span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function SortMenu({ value, onChange }: { value: number; onChange: (index: number) => void }) {
+  const [open, setOpen] = useState(false);
+  const ref = useDismiss(open, () => setOpen(false));
+  const current = SORTS[value] ?? SORTS[0];
+  return (
+    <div ref={ref} className="relative">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        className="inline-flex h-[30px] items-center gap-[6px] whitespace-nowrap rounded-[8px] border border-field-border bg-surface px-[10px] text-[13px] text-muted transition-colors hover:border-field-border-hover hover:bg-surface-2 hover:text-ink"
+      >
+        <ArrowUpDown size={13} strokeWidth={1.75} />
+        {current.label}
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.ul
+            role="listbox"
+            aria-label="Sort"
+            initial={{ opacity: 0, y: -4 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.14, ease: EASE }}
+            className="absolute right-0 top-[calc(100%+6px)] z-30 min-w-[190px] rounded-[10px] border border-card-border bg-surface p-[4px] shadow-pop"
+          >
+            {SORTS.map((s, i) => (
+              <li
+                key={s.label}
+                role="option"
+                aria-selected={i === value}
+                onClick={() => {
+                  onChange(i);
+                  setOpen(false);
+                }}
+                className="flex h-[32px] cursor-pointer items-center justify-between gap-[10px] rounded-[7px] px-[10px] text-[13px] text-ink hover:bg-surface-2"
+              >
+                {s.label}
+                {i === value && <Check size={14} strokeWidth={2} className="text-primary" />}
+              </li>
+            ))}
+          </motion.ul>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/** Where the ticket is: three short segments that fill up to its status. */
+function StatusTrack({ status }: { status: string }) {
+  const reached = STATUS_RANK[status] ?? 1;
+  return (
+    <span className="flex items-center gap-[3px]" aria-hidden="true">
+      {[1, 2, 3].map((n) => (
+        <span
+          key={n}
+          className={`h-[4px] w-[14px] rounded-full ${n <= reached ? (reached === 3 ? "bg-lime-bright" : "bg-primary") : "bg-surface-2"}`}
+        />
+      ))}
+    </span>
+  );
+}
+
+function TicketRow({ ticket: t, now }: { ticket: Ticket; now: number }) {
+  return (
+    <Link
+      href={`/tickets/${encodeURIComponent(t.ticketNumber)}`}
+      className="group flex items-center gap-[14px] px-[16px] py-[14px] transition-colors duration-150 hover:bg-surface-2/50"
+    >
+      <div className="flex min-w-0 flex-1 flex-col gap-[4px]">
+        <div className="flex min-w-0 items-start gap-[8px] sm:items-center">
+          <span className="line-clamp-2 min-w-0 text-[13px] font-medium text-ink sm:line-clamp-none sm:truncate">{t.subject || t.category}</span>
+          {t.replies.length > 0 && (
+            <span
+              className="inline-flex h-[20px] shrink-0 items-center gap-[4px] rounded-full bg-primary-soft px-[7px] text-[11px] font-medium text-primary"
+              title={`${t.replies.length} ${t.replies.length === 1 ? "reply" : "replies"} from IT`}
+            >
+              <MessageSquareText size={11} strokeWidth={2} />
+              {t.replies.length}
+              <span className="hidden sm:inline">{t.replies.length === 1 ? "reply" : "replies"}</span>
+            </span>
+          )}
+        </div>
+        <div className="flex min-w-0 flex-wrap items-center gap-x-[8px] gap-y-[2px] text-[12px] text-muted-2">
+          <span className="tabular-nums text-muted">{t.ticketNumber}</span>
+          <span aria-hidden="true" className="hidden sm:inline">·</span>
+          <span className="hidden truncate sm:inline">{t.category}</span>
+          <span aria-hidden="true">·</span>
+          <span title={formatTimestamp(t.createdAt)}>{timeAgo(t.createdAt, now)}</span>
+          {t.attachments.length > 0 && (
+            <span className="inline-flex items-center gap-[3px]" title={`${t.attachments.length} attachment${t.attachments.length === 1 ? "" : "s"}`}>
+              <Paperclip size={11} strokeWidth={1.75} />
+              {t.attachments.length}
+            </span>
           )}
         </div>
       </div>
-    </main>
+
+      <div className="hidden shrink-0 flex-col items-end gap-[6px] sm:flex">
+        <span className="inline-flex items-center gap-[6px] text-[12px] font-medium text-ink">
+          <StatusDot status={t.status} />
+          {t.status}
+        </span>
+        <StatusTrack status={t.status} />
+      </div>
+      <span className="hidden w-[78px] shrink-0 justify-end md:flex">
+        <PriorityBadge priority={t.priority} />
+      </span>
+      <span className="flex shrink-0 flex-col items-end gap-[4px] sm:hidden">
+        <span className="inline-flex items-center gap-[5px] text-[12px] text-ink">
+          <StatusDot status={t.status} />
+          {t.status}
+        </span>
+      </span>
+      <ChevronRight size={16} strokeWidth={1.75} className="shrink-0 text-faint transition-transform duration-200 group-hover:translate-x-[2px] group-hover:text-ink" />
+    </Link>
   );
 }

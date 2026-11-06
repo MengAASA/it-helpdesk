@@ -3,7 +3,7 @@ import { UserRound } from "lucide-react";
 import { prisma } from "@/app/lib/db";
 import { isOverdue } from "@/app/lib/sla";
 import { getSlaHours } from "@/app/lib/slaSettings";
-import { countBy, getAgentPerformance, getWeeklyFlow, type CountRow } from "@/app/lib/reportsData";
+import { countBy, formatDuration, getAgentPerformance, getAvgResolutionHours, getWeeklyFlow, type CountRow } from "@/app/lib/reportsData";
 import Avatar from "@/app/components/Avatar";
 import { FlipBlock } from "../SidebarFlip";
 import { Tile, Quiet } from "../Tile";
@@ -18,37 +18,6 @@ const WEEKS = 12;
 /** The request's clock, kept out of the component body so render stays pure. */
 function reportTime(): number {
   return Date.now();
-}
-
-/**
- * Only tickets whose closure was captured as a "status -> Closed" ticket_events row
- * count toward this average — tickets closed before event logging existed, or closed
- * without a status transition being recorded, aren't included.
- */
-async function getAvgResolutionHours(): Promise<{ avgHours: number | null; sampleSize: number }> {
-  const closureEvents = await prisma.ticket_events.findMany({
-    where: { event_type: "status", to_value: "Closed" },
-    select: { ticket_id: true, created_at: true, tickets: { select: { created_at: true } } },
-    orderBy: { created_at: "desc" },
-  });
-
-  const latestByTicket = new Map<number, number>();
-  for (const e of closureEvents) {
-    if (latestByTicket.has(e.ticket_id)) continue;
-    const hours = (e.created_at.getTime() - e.tickets.created_at.getTime()) / (1000 * 60 * 60);
-    if (hours >= 0) latestByTicket.set(e.ticket_id, hours);
-  }
-
-  const durations = Array.from(latestByTicket.values());
-  if (durations.length === 0) return { avgHours: null, sampleSize: 0 };
-  return {
-    avgHours: durations.reduce((a, b) => a + b, 0) / durations.length,
-    sampleSize: durations.length,
-  };
-}
-
-function formatDuration(hours: number): string {
-  return hours < 48 ? `${hours.toFixed(1)}h` : `${(hours / 24).toFixed(1)}d`;
 }
 
 /** Blank values (no department or site given) are grouped under one honest label. */

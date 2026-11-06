@@ -267,6 +267,21 @@ body {
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--primary) 14%, transparent);
 }
 
+/* Still scrolls (wheel, touch, keyboard), just without a visible scrollbar. Used by the admin sidebar nav. */
+.no-scrollbar {
+  scrollbar-width: none;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* A field that sits inside a card which shows the focus itself (the card's border lights up). */
+.field-bare:focus-visible {
+  border-color: transparent;
+  box-shadow: none;
+}
+
 @layer base {
   /* In the base layer, so components that set their own transition still win. */
   :where(input, textarea, select) {
@@ -303,6 +318,85 @@ body {
 
 .animate-phn-rise {
   animation: phn-rise 0.35s ease-out;
+}
+
+/*
+ * Public home page motion. CSS only and one-time (plus a small "live" ping): it animates only
+ * opacity, transform and clip-path, so nothing re-lays-out and no JavaScript runs for it.
+ * `--d` staggers the entrance of each block.
+ */
+.home-rise {
+  animation: phn-rise 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: var(--d, 0ms);
+}
+
+@keyframes phn-type {
+  from {
+    clip-path: inset(0 100% 0 0);
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+  }
+}
+
+/* Reveals a line of text left to right in small steps, like it's being typed. */
+.home-type {
+  animation: phn-type 1.6s steps(34, end) 0.6s both;
+}
+
+@keyframes phn-caret {
+  50% {
+    opacity: 0;
+  }
+}
+
+@keyframes phn-show {
+  to {
+    opacity: 1;
+  }
+}
+
+/* The cursor appears once the line has finished typing, blinks a few times, then stays. */
+.home-caret {
+  opacity: 0;
+  animation:
+    phn-show 0s 2.2s forwards,
+    phn-caret 0.9s steps(1) 2.2s 5;
+}
+
+/* The blinking cursor of an animated example (Submit page description box). */
+.typing-caret {
+  animation: phn-caret 1s steps(1) infinite;
+}
+
+@keyframes phn-ping {
+  0% {
+    transform: scale(1);
+    opacity: 0.55;
+  }
+  80%,
+  100% {
+    transform: scale(2.6);
+    opacity: 0;
+  }
+}
+
+.live-ping {
+  animation: phn-ping 2s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .home-rise,
+  .home-type,
+  .home-caret,
+  .live-ping,
+  .typing-caret {
+    animation: none;
+  }
+
+  .home-caret {
+    opacity: 1;
+  }
 }
 
 /*

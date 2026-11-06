@@ -164,7 +164,7 @@ export default function RocketLaunch({
       />
 
       <motion.p
-        className="absolute left-1/2 top-[18px] -translate-x-1/2 whitespace-nowrap text-[11px] font-medium text-muted"
+        className="absolute left-1/2 top-[18px] -translate-x-1/2 whitespace-nowrap rounded-full bg-surface px-[12px] py-[5px] text-[12px] font-medium text-ink shadow-card"
         initial={{ opacity: 0 }}
         animate={{ opacity: [0, 1, 1, 0] }}
         transition={{ duration: FLIGHT_DURATION + 0.4, times: [0, 0.12, 0.82, 1] }}
@@ -212,9 +212,7 @@ export default function RocketLaunch({
         >
           <Building2 size={16} strokeWidth={2} />
         </motion.span>
-        <span className="rounded-full bg-ink/80 px-[6px] py-[1.5px] text-[7.5px] font-semibold uppercase tracking-[0.1em] text-white">
-          IT Dept
-        </span>
+        <span className="rounded-full bg-ink px-[7px] py-[1px] text-[11px] font-medium text-paper">{team}</span>
       </div>
     </div>
   );

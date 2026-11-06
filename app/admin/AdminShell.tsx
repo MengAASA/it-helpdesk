@@ -55,7 +55,7 @@ export default function AdminShell({
         mobileOpen={mobileOpen}
         onCloseMobile={() => setMobileOpen(false)}
       />
-      <AdminTopBar user={user} onOpenMobile={() => setMobileOpen(true)} insetClassName={inset} />
+      <AdminTopBar user={user} access={access} onOpenMobile={() => setMobileOpen(true)} insetClassName={inset} />
       {/* Pages with FLIP blocks (the dashboard masonry) animate their own content, so the padding snaps there. */}
       <main
         className={`flex w-full min-w-0 flex-1 flex-col gap-[20px] px-[16px] py-[20px] md:py-[24px] md:pr-[24px] ${inset} has-[[data-sidebar-flip]]:transition-none`}

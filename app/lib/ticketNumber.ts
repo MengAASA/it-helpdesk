@@ -19,13 +19,4 @@ export function generateTicketNumber(): string {
   return `TCK-${code.slice(0, 4)}-${code.slice(4)}`;
 }
 
-/**
- * Tidies a ticket number someone typed: trims it, upper-cases it, and puts the dashes back in a
- * new-style number typed without them ("tck 7k3f9q2m" → "TCK-7K3F-9Q2M"). Older numbers are
- * already upper-case, so they still match after this.
- */
-export function normalizeTicketNumber(input: string): string {
-  const value = input.trim().toUpperCase();
-  const short = value.replace(/[\s-]/g, "").match(/^TCK([A-Z0-9]{4})([A-Z0-9]{4})$/);
-  return short ? `TCK-${short[1]}-${short[2]}` : value;
-}
+export { normalizeTicketNumber } from "./ticketNumberFormat";

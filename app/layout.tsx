@@ -53,26 +53,25 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
       </head>
       <body className="min-h-full flex flex-col bg-paper font-body text-ink">
         <PortalChrome>
-        <header className="sticky top-0 z-50 flex items-center justify-between gap-[18px] border-b border-white/10 bg-nav-gradient px-[21px] py-[16.5px] text-white shadow-[0_1px_0_rgba(255,255,255,0.06)_inset] md:px-[42px]">
-          <Link href="/" className="flex items-center gap-[10.5px] text-white">
-            {/* eslint-disable-next-line @next/next/no-img-element -- next/image's optimizer 400s on this asset under our basePath; a plain <img> avoids it for this fixed-size header icon. */}
-            <img
-              src={`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/logo-it.jpg`}
-              alt="PHN Helpdesk logo"
-              width={31.5}
-              height={31.5}
-              className="h-[31.5px] w-[31.5px] shrink-0 rounded-full object-cover"
-            />
-            <div className="flex flex-col gap-[1.5px]">
-              <span className="font-heading text-xs font-semibold tracking-[0.01em]">
-                PHN Helpdesk
+        <header className="sticky top-0 z-50 border-b border-card-border/60 bg-paper/75 backdrop-blur-xl">
+          <div className="relative flex h-[56px] items-center justify-between gap-[16px] px-[16px] md:px-[32px]">
+            <Link href="/" className="flex min-w-0 items-center gap-[10px]">
+              {/* eslint-disable-next-line @next/next/no-img-element -- next/image's optimizer 400s on this asset under our basePath; a plain <img> avoids it for this fixed-size header icon. */}
+              <img
+                src={`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/logo-it.jpg`}
+                alt=""
+                width={28}
+                height={28}
+                className="h-[28px] w-[28px] shrink-0 rounded-[8px] object-cover"
+              />
+              <span className="truncate text-[13px] font-semibold tracking-[-0.01em] text-ink">PHN Helpdesk</span>
+              <span className="hidden text-[13px] text-faint sm:inline" aria-hidden="true">
+                /
               </span>
-              <span className="text-[8.25px] uppercase tracking-[0.14em] text-faint">
-                IT Support Portal
-              </span>
-            </div>
-          </Link>
-          <HeaderNav adminHref={adminHref} adminLabel={adminLabel} showSignOut={!!session} />
+              <span className="hidden truncate text-[13px] text-muted-2 sm:inline">IT Support</span>
+            </Link>
+            <HeaderNav adminHref={adminHref} adminLabel={adminLabel} showSignOut={!!session} />
+          </div>
         </header>
         </PortalChrome>
 
@@ -82,29 +81,50 @@ export default async function RootLayout({ children }: LayoutProps<"/">) {
         <PortalChrome>
         {session && <OnlineUsersBar initialUsers={onlineUsers} />}
 
-        <footer className="flex flex-wrap items-center justify-between gap-[15px] border-t border-white/10 bg-nav-gradient px-[42px] py-[21px] text-[9.75px] text-faint">
-          <span>
-            This system is developed by{" "}
-            <strong className="font-semibold text-white">PHN IT Department</strong>.
-            <span className="text-faint/70">
-              {" "}
-              · v{packageJson.version}
-              {buildLabel && ` · updated ${buildLabel}`}
-            </span>
-          </span>
-          <div className="flex items-center gap-[19.5px]">
-            <Link href="/" className="hover:text-white">
-              Home
-            </Link>
-            <Link href="/submit" className="hover:text-white">
-              Submit a ticket
-            </Link>
-            <Link href="/tickets" className="hover:text-white">
-              View my tickets
-            </Link>
-            <a href={adminHref} className="hover:text-white">
-              {adminLabel}
-            </a>
+        <footer className="tile-ink">
+          <div className="flex flex-col gap-[24px] px-[16px] pb-[20px] pt-[28px] md:px-[32px]">
+            <div className="flex flex-wrap items-start justify-between gap-[28px]">
+              <div className="flex max-w-[320px] flex-col gap-[8px]">
+                <span className="flex items-center gap-[10px]">
+                  {/* eslint-disable-next-line @next/next/no-img-element -- see the header logo. */}
+                  <img
+                    src={`${process.env.NEXT_PUBLIC_BASE_PATH ?? ""}/logo-it.jpg`}
+                    alt=""
+                    width={24}
+                    height={24}
+                    className="h-[24px] w-[24px] shrink-0 rounded-[7px] object-cover"
+                  />
+                  <span className="text-[13px] font-semibold text-ink">PHN Helpdesk</span>
+                </span>
+                <p className="text-[13px] leading-[20px] text-muted-2">Raise and track IT requests with the PHN IT Department.</p>
+              </div>
+              <nav aria-label="Footer" className="grid grid-cols-2 gap-x-[48px] gap-y-[8px] text-[13px]">
+                <div className="flex flex-col gap-[8px]">
+                  <span className="text-[12px] text-muted-2">Get help</span>
+                  <Link href="/submit" className="text-ink/85 transition-colors hover:text-ink">
+                    Submit a ticket
+                  </Link>
+                  <Link href="/tickets" className="text-ink/85 transition-colors hover:text-ink">
+                    View my tickets
+                  </Link>
+                </div>
+                <div className="flex flex-col gap-[8px]">
+                  <span className="text-[12px] text-muted-2">IT staff</span>
+                  <a href={adminHref} className="text-ink/85 transition-colors hover:text-ink">
+                    {adminLabel}
+                  </a>
+                </div>
+              </nav>
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-[8px] border-t border-white/10 pt-[16px] text-[12px] text-muted-2">
+              <span>
+                Built by the <span className="text-muted">PHN IT Department</span>
+              </span>
+              <span className="tabular-nums">
+                v{packageJson.version}
+                {buildLabel && ` · updated ${buildLabel}`}
+              </span>
+            </div>
           </div>
         </footer>
         </PortalChrome>

@@ -1,12 +1,14 @@
 "use client";
 
-import { useEffect, useRef, useState, useSyncExternalStore } from "react";
+import { useState, useSyncExternalStore } from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
-import { Menu, Search, Sun, Moon, Monitor, ChevronRight, LogOut, ExternalLink, Check } from "lucide-react";
+import { usePathname } from "next/navigation";
+import { Menu, Sun, Moon, Monitor, ChevronRight, LogOut, ExternalLink, Check } from "lucide-react";
 import Avatar from "@/app/components/Avatar";
 import { useDismiss } from "@/app/components/useDismiss";
 import { applyTheme, THEME_STORAGE_KEY, type ThemePreference } from "@/app/lib/theme";
+import type { SidebarAccess } from "./AdminSidebar";
+import TopBarSearch from "./TopBarSearch";
 
 const SECTION_LABELS: Record<string, string> = {
   tickets: "Tickets",
@@ -172,38 +174,19 @@ function ProfileMenu({ user }: { user: { name: string; email: string; role: stri
 
 export default function AdminTopBar({
   user,
+  access,
   onOpenMobile,
   insetClassName,
 }: {
   user: { name: string; email: string; role: string };
+  /** Which admin pages this person can open, so search only suggests those. */
+  access: SidebarAccess;
   onOpenMobile: () => void;
   /** Left padding that keeps the bar's content clear of the floating sidebar it sits under. */
   insetClassName: string;
 }) {
   const pathname = usePathname();
-  const router = useRouter();
-  const searchRef = useRef<HTMLInputElement>(null);
   const crumbs = breadcrumbsFor(pathname);
-
-  // "/" jumps to ticket search from anywhere, unless the person is already typing.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement;
-      const typing = target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName);
-      if (e.key === "/" && !typing && !e.metaKey && !e.ctrlKey) {
-        e.preventDefault();
-        searchRef.current?.focus();
-      }
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, []);
-
-  function onSearch(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault();
-    const q = searchRef.current?.value.trim() ?? "";
-    router.push(q ? `/admin/tickets?q=${encodeURIComponent(q)}` : "/admin/tickets");
-  }
 
   return (
     <header
@@ -240,19 +223,7 @@ export default function AdminTopBar({
         </ol>
       </nav>
 
-      <form role="search" onSubmit={onSearch} className="relative hidden sm:block">
-        <Search size={14} strokeWidth={1.75} className="pointer-events-none absolute left-[10px] top-1/2 -translate-y-1/2 text-faint" />
-        <input
-          ref={searchRef}
-          type="search"
-          aria-label="Search tickets"
-          placeholder="Search tickets or IDs…"
-          className="h-[32px] w-[220px] rounded-[8px] border border-field-border bg-surface hover:border-field-border-hover pl-[30px] pr-[30px] text-[13px] text-ink placeholder:text-faint transition-[width,border-color,box-shadow] focus:w-[280px] lg:w-[260px] lg:focus:w-[320px]"
-        />
-        <kbd className="pointer-events-none absolute right-[8px] top-1/2 -translate-y-1/2 rounded-[4px] border border-card-border bg-surface px-[5px] font-mono-plex text-[11px] leading-[16px] text-faint">
-          /
-        </kbd>
-      </form>
+      <TopBarSearch access={access} userName={user.name} />
 
       <ThemeMenu />
       <ProfileMenu user={user} />

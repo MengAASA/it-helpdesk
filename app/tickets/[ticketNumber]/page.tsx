@@ -1,55 +1,32 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
-import type { LucideIcon } from "lucide-react";
-import {
-  Hash,
-  Tag,
-  Users2,
-  Clock,
-  Paperclip,
-  MessageSquareText,
-  ListChecks,
-  IdCard,
-  Mail,
-  Phone,
-  MapPin,
-  Building2,
-  UserCog,
-  History,
-} from "lucide-react";
+import { ArrowLeft, Download } from "lucide-react";
 import { prisma } from "@/app/lib/db";
+import { getEmailSettings } from "@/app/lib/emailSettings";
 import Avatar from "@/app/components/Avatar";
+import { PriorityBadge, StatusDot } from "@/app/components/TicketBadges";
 import TicketFeedback from "./TicketFeedback";
 import TicketReplyForm from "./TicketReplyForm";
 import CopyButton from "./CopyButton";
+import StatusSteps from "@/app/components/StatusSteps";
+import { fileExtLabel, formatFileSize } from "@/app/lib/fileFormat";
+import { Detail, DetailGroup } from "@/app/components/DetailList";
 
-function formatTimestamp(iso: string | Date): string {
-  return new Date(iso).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
+function formatTimestamp(d: Date): string {
+  return d.toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
 }
 
-const STATUS_DOT: Record<string, string> = {
-  Open: "bg-[color:var(--color-blue)]",
-  "In Progress": "bg-amber-solid",
-  Closed: "bg-[color:var(--color-emerald)]",
-};
+type Entry =
+  | { kind: "reply"; key: string; at: Date; author: string; mine: boolean; message: string }
+  | { kind: "event"; key: string; at: Date; actor: string; text: string; status: string };
 
-const STATUS_TEXT: Record<string, string> = {
-  Open: "text-[color:var(--color-blue-text)]",
-  "In Progress": "text-amber-text-strong",
-  Closed: "text-[color:var(--color-emerald-text)]",
-};
-
-const PRIORITY_DOT: Record<string, string> = {
-  High: "bg-[color:var(--color-rose)]",
-  Normal: "bg-[color:var(--color-blue)]/50",
-  Low: "bg-[color:var(--color-emerald)]/60",
-};
-
-const PRIORITY_TEXT: Record<string, string> = {
-  High: "text-[color:var(--color-rose-text)]",
-  Normal: "text-pill-text",
-  Low: "text-[color:var(--color-emerald-text)]",
-};
+function eventText(from: string | null, to: string | null): string {
+  if (to === "Closed") return "closed this ticket";
+  if (to === "Open" && from === "Closed") return "reopened this ticket";
+  if (to === "In Progress") return "started working on it";
+  return `marked it ${to ?? "updated"}`;
+}
 
 export async function generateMetadata({
   params,
@@ -71,256 +48,340 @@ export default async function PublicTicketDetail({
   const ticket = await prisma.tickets.findUnique({ where: { ticket_number: ticketNumber } });
   if (!ticket) notFound();
 
-  const attachments = await prisma.attachments.findMany({
-    where: { ticket_id: ticket.id },
-    select: { id: true, filename: true, size: true },
-  });
-  const replies = await prisma.ticket_notes.findMany({
-    where: { ticket_id: ticket.id, is_public: true },
-    orderBy: { created_at: "asc" },
-  });
-  const statusEvents = await prisma.ticket_events.findMany({
-    where: { ticket_id: ticket.id, event_type: "status" },
-    orderBy: { created_at: "asc" },
-  });
+  const [attachments, replies, statusEvents, emailSettings] = await Promise.all([
+    prisma.attachments.findMany({
+      where: { ticket_id: ticket.id },
+      select: { id: true, filename: true, size: true },
+    }),
+    prisma.ticket_notes.findMany({
+      where: { ticket_id: ticket.id, is_public: true },
+      orderBy: { created_at: "asc" },
+    }),
+    prisma.ticket_events.findMany({
+      where: { ticket_id: ticket.id, event_type: "status" },
+      orderBy: { created_at: "asc" },
+    }),
+    getEmailSettings(),
+  ]);
   const userRequestTypes = JSON.parse(ticket.user_request_types) as string[];
   const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? "";
+  const isRequester = (nameOrEmail: string) =>
+    nameOrEmail.toLowerCase() === ticket.email.toLowerCase();
 
-  const activity = [
-    { label: "Ticket submitted", at: ticket.created_at, dot: "bg-faint" },
-    ...statusEvents.map((e) => ({
-      label: `Marked as ${e.to_value ?? "updated"}`,
-      at: e.created_at,
-      dot: STATUS_DOT[e.to_value ?? ""] ?? "bg-faint",
+  // Replies and status changes, in the order they happened. On a tie (IT replies and closes in
+  // one go) the reply reads first.
+  const entries: Entry[] = [
+    ...replies.map((r) => ({
+      kind: "reply" as const,
+      key: `r${r.id}`,
+      at: r.created_at,
+      author: r.author_name,
+      mine: isRequester(r.author_email),
+      message: r.message,
     })),
-  ];
-  const lastUpdatedAt = [ticket.created_at, ...statusEvents.map((e) => e.created_at), ...replies.map((r) => r.created_at)].reduce(
+    ...statusEvents.map((e) => ({
+      kind: "event" as const,
+      key: `e${e.id}`,
+      at: e.created_at,
+      actor: e.actor_name === ticket.name ? "You" : e.actor_name,
+      text: eventText(e.from_value, e.to_value),
+      status: e.to_value ?? "",
+    })),
+  ].sort((a, b) => a.at.getTime() - b.at.getTime() || (a.kind === "reply" ? -1 : 1));
+
+  const lastUpdatedAt = [ticket.created_at, ...entries.map((e) => e.at)].reduce(
     (max, d) => (d > max ? d : max),
     ticket.created_at
   );
 
+  const closed = ticket.status === "Closed";
+  const lastReply = replies[replies.length - 1];
+  const waitingOnIt = !closed && (!lastReply || isRequester(lastReply.author_email));
+  const emailsReplies = emailSettings.enabled && emailSettings.notifyNewReply;
+
   return (
-    <main className="mx-auto flex w-full flex-1 flex-col gap-[18px] px-[42px] pb-[67.5px] pt-[42px]">
-      <div className="flex flex-col gap-[13.5px] rounded-[18px] bg-admin-gradient px-[27px] py-[22.5px] text-white shadow-[0_12px_32px_rgba(76,29,149,0.22)]">
-        <div className="flex flex-wrap items-start justify-between gap-[15px]">
-          <div className="flex flex-col gap-[6px]">
-            <span className="font-mono-plex text-[10.5px] uppercase tracking-[0.08em] text-white/70">
-              {ticket.ticket_number}
-            </span>
-            <h1 className="font-heading text-[24px] font-semibold leading-[1.2] tracking-[-0.02em]">
-              {ticket.subject}
-            </h1>
-          </div>
-          <div className="flex items-center gap-[9px]">
-            <span
-              className={`inline-flex items-center gap-[6px] rounded-full bg-surface px-[12px] py-[6px] text-[10px] font-semibold shadow-[0_2px_6px_rgba(15,23,42,0.14)] ${
-                STATUS_TEXT[ticket.status] ?? STATUS_TEXT.Open
-              }`}
-            >
-              <span className={`h-[7px] w-[7px] rounded-full ${STATUS_DOT[ticket.status] ?? STATUS_DOT.Open}`} />
-              {ticket.status}
-            </span>
-            <span
-              className={`inline-flex items-center gap-[6px] rounded-full bg-surface px-[12px] py-[6px] text-[10px] font-semibold shadow-[0_2px_6px_rgba(15,23,42,0.14)] ${
-                PRIORITY_TEXT[ticket.priority] ?? PRIORITY_TEXT.Normal
-              }`}
-            >
-              <span
-                className={`h-[7px] w-[7px] rounded-full ${PRIORITY_DOT[ticket.priority] ?? PRIORITY_DOT.Normal}`}
-              />
-              {ticket.priority} priority
-            </span>
-          </div>
+    <main className="mx-auto flex w-full max-w-[1120px] flex-1 flex-col gap-[20px] px-[16px] pb-[56px] pt-[24px] md:px-[32px] md:pt-[32px]">
+      <header className="home-rise flex flex-col gap-[10px]">
+        <Link
+          href="/tickets"
+          className="group inline-flex w-fit items-center gap-[6px] text-[12px] font-medium text-muted-2 transition-colors hover:text-ink"
+        >
+          <ArrowLeft size={14} strokeWidth={2} className="transition-transform duration-200 group-hover:-translate-x-[2px]" />
+          Your tickets
+        </Link>
+        <h1 className="max-w-[760px] text-[22px] font-semibold leading-[28px] tracking-[-0.02em] text-ink">
+          {ticket.subject}
+        </h1>
+        <div className="flex flex-wrap items-center gap-x-[10px] gap-y-[6px] text-[12px] text-muted-2">
+          <span className="inline-flex h-[24px] items-center gap-[6px] rounded-[6px] border border-card-border bg-surface pl-[8px] pr-[4px] text-[12px] font-medium tabular-nums text-ink">
+            {ticket.ticket_number}
+            <CopyButton
+              value={ticket.ticket_number}
+              label="Copy ticket ID"
+              className="flex h-[18px] w-[18px] items-center justify-center rounded-[4px] text-faint transition-colors hover:bg-surface-2 hover:text-ink"
+            />
+          </span>
+          <span>
+            {ticket.category}
+            <span aria-hidden="true" className="px-[8px]">·</span>
+            Opened {formatTimestamp(ticket.created_at)}
+          </span>
         </div>
-      </div>
+      </header>
 
-      <div className="grid grid-cols-1 gap-[18px] lg:grid-cols-[1fr_360px] lg:items-start">
-        <div className="flex flex-col gap-[16.5px]">
-          <div className="flex flex-col gap-[15px] rounded-[14px] border border-card-border bg-surface px-[18px] py-[16.5px] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-            <div className="flex items-center gap-[10.5px]">
-              <Avatar name={ticket.name} size={36} />
-              <div className="flex flex-col">
-                <span className="text-[12.75px] font-semibold text-ink">{ticket.name}</span>
-                <span className="text-[9.75px] text-faint">Requester</span>
-              </div>
-            </div>
+      <div className="grid grid-cols-1 gap-[20px] lg:grid-cols-[minmax(0,1fr)_340px] lg:grid-rows-[auto_1fr]">
+        <StatusCard
+          className="lg:col-start-2 lg:row-start-1"
+          status={ticket.status}
+          assignee={ticket.assigned_to}
+          team={ticket.team}
+          createdAt={ticket.created_at}
+          lastUpdatedAt={lastUpdatedAt}
+          events={statusEvents.map((e) => ({ to: e.to_value, from: e.from_value, at: e.created_at }))}
+        />
 
-            <div className="grid grid-cols-2 gap-x-[18px] gap-y-[12px] border-t border-divider pt-[13.5px] sm:grid-cols-3">
-              <div className="flex items-start gap-[7.5px]">
-                <Hash size={13} strokeWidth={2} className="mt-[1.5px] shrink-0 text-faint" />
-                <div className="flex flex-col gap-[1.5px]">
-                  <span className="text-[8.5px] font-semibold uppercase tracking-[0.06em] text-muted-2">
-                    Tracking ID
+        {/* The whole story in one thread: the request, every reply and status change, then your turn. */}
+        <section aria-label="Conversation" className="min-w-0 lg:col-start-1 lg:row-span-2 lg:row-start-1">
+          <ol className="relative flex flex-col gap-[14px]">
+            <span aria-hidden="true" className="absolute bottom-[14px] left-[13.5px] top-[14px] w-px bg-divider" />
+
+            <li className="home-rise relative grid grid-cols-[28px_minmax(0,1fr)] gap-[12px]" style={{ "--d": "60ms" } as React.CSSProperties}>
+              <Avatar name={ticket.name} size={28} />
+              <article className="flex flex-col overflow-hidden rounded-[14px] border border-card-border bg-surface">
+                <div className="flex flex-wrap items-baseline justify-between gap-x-[10px] gap-y-[2px] px-[16px] pt-[12px]">
+                  <span className="text-[13px] text-muted-2">
+                    <span className="font-semibold text-ink">{ticket.name}</span> opened this ticket
                   </span>
-                  <span className="inline-flex items-center gap-[6px] font-mono-plex text-[11px] font-medium text-ink">
-                    {ticket.ticket_number}
-                    <CopyButton
-                      value={ticket.ticket_number}
-                      label="Copy tracking ID"
-                      className="text-faint transition-colors hover:text-primary"
-                    />
-                  </span>
+                  <time dateTime={ticket.created_at.toISOString()} className="text-[12px] text-faint">
+                    {formatTimestamp(ticket.created_at)}
+                  </time>
                 </div>
-              </div>
-              <MetaItem icon={Tag} label="Category" value={ticket.category} />
-              <MetaItem icon={Users2} label="Routed to" value={ticket.team} />
-              <MetaItem icon={Clock} label="Submitted" value={formatTimestamp(ticket.created_at)} />
-              <MetaItem icon={History} label="Last updated" value={formatTimestamp(lastUpdatedAt)} />
-              <MetaItem icon={UserCog} label="Assigned to" value={ticket.assigned_to ?? "Unassigned"} />
-            </div>
+                <p className="whitespace-pre-wrap break-words px-[16px] pb-[14px] pt-[8px] text-[13px] leading-[21px] text-ink">
+                  {ticket.message}
+                </p>
+                {attachments.length > 0 && (
+                  <div className="flex flex-col gap-[8px] border-t border-divider bg-surface-2/40 px-[16px] py-[12px]">
+                    <span className="text-[12px] font-medium text-muted-2">
+                      {attachments.length} {attachments.length === 1 ? "file" : "files"} on this ticket
+                    </span>
+                    <ul className="grid grid-cols-1 gap-[6px] sm:grid-cols-2">
+                      {attachments.map((a) => (
+                        <li key={a.id}>
+                          <a
+                            href={`${basePath}/api/attachments/${a.id}?ticketNumber=${ticket.ticket_number}`}
+                            className="group flex items-center gap-[10px] rounded-[10px] border border-card-border bg-surface p-[6px] pr-[10px] transition-colors hover:border-field-border-hover"
+                          >
+                            <span className="flex h-[30px] w-[38px] shrink-0 items-center justify-center rounded-[6px] bg-ink text-[11px] font-semibold tracking-[0.02em] text-paper">
+                              {fileExtLabel(a.filename)}
+                            </span>
+                            <span className="flex min-w-0 flex-1 flex-col">
+                              <span className="truncate text-[13px] font-medium text-ink" title={a.filename}>{a.filename}</span>
+                              <span className="text-[11px] text-muted-2">{formatFileSize(a.size)}</span>
+                            </span>
+                            <Download size={14} strokeWidth={2} className="shrink-0 text-faint transition-[color,transform] duration-200 group-hover:translate-y-[1px] group-hover:text-ink" />
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </article>
+            </li>
 
-            {userRequestTypes.length > 0 && (
-              <div className="flex flex-col gap-[9px] border-t border-divider pt-[13.5px]">
-                <span className="inline-flex items-center gap-[6px] text-[8.5px] font-semibold uppercase tracking-[0.06em] text-muted-2">
-                  <ListChecks size={11.5} strokeWidth={2.25} />
-                  User request
+            {entries.map((entry, i) => {
+              const style = { "--d": `${Math.min(120 + i * 50, 450)}ms` } as React.CSSProperties;
+              if (entry.kind === "event") {
+                return (
+                  <li key={entry.key} className="home-rise relative grid grid-cols-[28px_minmax(0,1fr)] items-center gap-[12px]" style={style}>
+                    <span className="flex justify-center">
+                      <span className="flex h-[14px] w-[14px] items-center justify-center rounded-full bg-paper ring-1 ring-card-border">
+                        <StatusDot status={entry.status} />
+                      </span>
+                    </span>
+                    <p className="flex flex-wrap items-baseline gap-x-[6px] text-[12px] text-muted-2">
+                      <span>
+                        <span className="font-medium text-ink">{entry.actor}</span> {entry.text}
+                      </span>
+                      <time dateTime={entry.at.toISOString()} className="text-faint">
+                        · {formatTimestamp(entry.at)}
+                      </time>
+                    </p>
+                  </li>
+                );
+              }
+              return (
+                <li key={entry.key} className="home-rise relative grid grid-cols-[28px_minmax(0,1fr)] gap-[12px]" style={style}>
+                  <Avatar name={entry.author} size={28} />
+                  <article
+                    className={`flex flex-col gap-[6px] rounded-[14px] px-[16px] py-[12px] ${
+                      entry.mine ? "bg-primary-soft" : "border border-card-border bg-surface"
+                    }`}
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-x-[10px] gap-y-[2px]">
+                      <span className="inline-flex items-center gap-[6px] text-[13px] font-semibold text-ink">
+                        {entry.mine ? "You" : entry.author}
+                        {!entry.mine && (
+                          <span className="inline-flex h-[18px] items-center rounded-[5px] bg-ink px-[6px] text-[11px] font-medium text-paper">
+                            IT
+                          </span>
+                        )}
+                      </span>
+                      <time dateTime={entry.at.toISOString()} className="text-[12px] text-faint">
+                        {formatTimestamp(entry.at)}
+                      </time>
+                    </div>
+                    <p className="whitespace-pre-wrap break-words text-[13px] leading-[21px] text-ink">{entry.message}</p>
+                  </article>
+                </li>
+              );
+            })}
+
+            {waitingOnIt && (
+              <li className="home-rise relative grid grid-cols-[28px_minmax(0,1fr)] items-center gap-[12px]" style={{ "--d": "300ms" } as React.CSSProperties}>
+                <span className="flex justify-center">
+                  <span className="flex h-[14px] w-[14px] items-center justify-center rounded-full bg-paper ring-1 ring-card-border">
+                    <span className="animate-phn-pulse h-[6px] w-[6px] rounded-full bg-primary" />
+                  </span>
                 </span>
-                <div className="flex flex-wrap gap-[6px]">
+                <p className="text-[12px] text-muted-2">
+                  Waiting for IT to reply.{" "}
+                  {emailsReplies ? (
+                    <>
+                      We&apos;ll email <span className="font-medium text-ink">{ticket.email}</span> when they do.
+                    </>
+                  ) : (
+                    "Their reply will show up here."
+                  )}
+                </p>
+              </li>
+            )}
+          </ol>
+
+          <div className="home-rise mt-[18px] grid grid-cols-[28px_minmax(0,1fr)] gap-[12px]" style={{ "--d": "360ms" } as React.CSSProperties}>
+            <Avatar name={ticket.name} size={28} />
+            <div className="min-w-0">
+              {closed ? (
+                <TicketFeedback
+                  ticketNumber={ticket.ticket_number}
+                  status={ticket.status}
+                  initialFeedback={ticket.feedback === "up" || ticket.feedback === "down" ? ticket.feedback : null}
+                />
+              ) : (
+                <TicketReplyForm ticketNumber={ticket.ticket_number} />
+              )}
+            </div>
+          </div>
+        </section>
+
+        <aside
+          aria-label="Ticket details"
+          className="home-rise flex flex-col gap-[16px] rounded-[14px] border border-card-border bg-surface p-[16px] lg:col-start-2 lg:row-start-2 lg:self-start"
+          style={{ "--d": "180ms" } as React.CSSProperties}
+        >
+          <DetailGroup title="Ticket">
+            <Detail label="Category" value={ticket.category} />
+            <Detail label="Priority">
+              <PriorityBadge priority={ticket.priority} />
+            </Detail>
+            {userRequestTypes.length > 0 && (
+              <Detail label="Request">
+                <span className="flex flex-wrap gap-[4px]">
                   {userRequestTypes.map((r) => (
-                    <span
-                      key={r}
-                      className="rounded-full border border-[color:var(--color-violet)]/25 bg-[color:var(--color-violet-light)] px-[9px] py-[4.5px] text-[9px] font-semibold text-[color:var(--color-violet-text)]"
-                    >
+                    <span key={r} className="inline-flex h-[22px] items-center rounded-full bg-surface-2 px-[8px] text-[12px] text-ink">
                       {r}
                     </span>
                   ))}
-                </div>
-              </div>
+                </span>
+              </Detail>
             )}
-          </div>
-
-          <div className="flex flex-col gap-[9px] rounded-[14px] border border-card-border bg-surface px-[18px] py-[16.5px] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-            <span className="inline-flex items-center gap-[6px] text-[9px] font-semibold uppercase tracking-[0.06em] text-muted-2">
-              <IdCard size={12} strokeWidth={2.25} />
-              Contact details
-            </span>
-            <div className="grid grid-cols-2 gap-x-[18px] gap-y-[12px] sm:grid-cols-3">
-              <MetaItem icon={IdCard} label="Staff No" value={ticket.staff_no} />
-              <MetaItem icon={Mail} label="Email" value={ticket.email} />
-              <MetaItem icon={Phone} label="Phone" value={ticket.phone} />
-              <MetaItem icon={MapPin} label="Location" value={ticket.location} />
-              <MetaItem icon={Building2} label="Department" value={ticket.department} />
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-[9px] rounded-[14px] border border-card-border bg-surface px-[18px] py-[16.5px] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-            <span className="inline-flex items-center gap-[6px] text-[9px] font-semibold uppercase tracking-[0.06em] text-muted-2">
-              <MessageSquareText size={12} strokeWidth={2.25} />
-              Issue
-            </span>
-            <p className="whitespace-pre-wrap border-l-[3px] border-l-[color:var(--color-blue)] pl-[13.5px] text-[11.25px] leading-[1.6] text-ink">
-              {ticket.message}
-            </p>
-          </div>
-
-          {attachments.length > 0 && (
-            <div className="flex flex-col gap-[9px] rounded-[14px] border border-card-border bg-surface px-[18px] py-[16.5px] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-              <span className="inline-flex items-center gap-[6px] text-[9px] font-semibold uppercase tracking-[0.06em] text-muted-2">
-                <Paperclip size={12} strokeWidth={2.25} />
-                Attachments ({attachments.length})
-              </span>
-              <div className="flex flex-wrap gap-[7.5px]">
-                {attachments.map((a) => (
-                  <a
-                    key={a.id}
-                    href={`${basePath}/api/attachments/${a.id}?ticketNumber=${ticket.ticket_number}`}
-                    className="inline-flex items-center gap-[6px] rounded-full border border-card-border bg-paper px-[10.5px] py-[6px] text-[9.75px] text-muted transition-colors hover:border-primary/40 hover:text-primary"
-                  >
-                    <Paperclip size={11} strokeWidth={2.25} className="text-faint" />
-                    {a.filename}
-                    <span className="text-faint">({Math.ceil(a.size / 1024)} KB)</span>
-                  </a>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div className="flex flex-col gap-[15px] lg:sticky lg:top-[84px]">
-          <div className="flex flex-col gap-[12px] rounded-[14px] border border-card-border bg-surface px-[18px] py-[16.5px] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-            <span className="inline-flex items-center gap-[6px] text-[9px] font-semibold uppercase tracking-[0.06em] text-muted-2">
-              <History size={12} strokeWidth={2.25} />
-              Activity
-            </span>
-            <div className="flex flex-col">
-              {activity.map((a, i) => (
-                <div key={i} className="flex gap-[10.5px]">
-                  <div className="flex flex-col items-center">
-                    <span className={`h-[8px] w-[8px] shrink-0 rounded-full ${a.dot}`} />
-                    {i < activity.length - 1 && <span className="mt-[3px] w-px flex-1 bg-divider" />}
-                  </div>
-                  <div className="flex flex-1 flex-col gap-[1.5px] pb-[10.5px]">
-                    <span className="text-[10px] font-medium text-ink">{a.label}</span>
-                    <span className="text-[8.5px] text-faint">{formatTimestamp(a.at)}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-[12px] rounded-[14px] border border-card-border bg-surface px-[18px] py-[16.5px] shadow-[0_1px_2px_rgba(15,23,42,0.04)]">
-            <span className="inline-flex items-center gap-[6px] text-[9px] font-semibold uppercase tracking-[0.06em] text-muted-2">
-              <MessageSquareText size={12} strokeWidth={2.25} />
-              Conversation
-              <span className="ml-auto rounded-full bg-result-bg px-[7.5px] py-[1.5px] text-[8.5px] font-semibold text-primary">
-                {replies.length}
-              </span>
-            </span>
-            {replies.length > 0 ? (
-              <div className="flex flex-col">
-                {replies.map((r, i) => {
-                  const isRequester = r.author_email.toLowerCase() === ticket.email.toLowerCase();
-                  return (
-                    <div
-                      key={r.id}
-                      className={`flex gap-[10.5px] ${i > 0 ? "mt-[12px] border-t border-divider pt-[12px]" : ""}`}
-                    >
-                      <Avatar name={r.author_name} size={26} />
-                      <div
-                        className={`flex flex-1 flex-col gap-[3px] border-l-[2px] pl-[10.5px] ${
-                          isRequester
-                            ? "border-l-[color:var(--color-blue)]/50"
-                            : "border-l-[color:var(--color-emerald)]/50"
-                        }`}
-                      >
-                        <div className="flex flex-wrap items-center justify-between gap-[9px]">
-                          <span className="text-[9.75px] font-semibold text-ink">
-                            {isRequester ? "You" : r.author_name}
-                          </span>
-                          <span className="text-[8.5px] text-faint">{formatTimestamp(r.created_at)}</span>
-                        </div>
-                        <p className="whitespace-pre-wrap text-[10.5px] leading-[1.5] text-muted">{r.message}</p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <span className="text-[10.5px] text-faint">No updates yet.</span>
-            )}
-
-            {ticket.status !== "Closed" && <TicketReplyForm ticketNumber={ticket.ticket_number} />}
-          </div>
-
-          <TicketFeedback
-            ticketNumber={ticket.ticket_number}
-            status={ticket.status}
-            initialFeedback={ticket.feedback === "up" || ticket.feedback === "down" ? ticket.feedback : null}
-          />
-        </div>
+            <Detail label="Submitted" value={formatTimestamp(ticket.created_at)} />
+          </DetailGroup>
+          <div className="h-px bg-divider" />
+          <DetailGroup title="Requester">
+            <Detail label="Name" value={ticket.name} />
+            <Detail label="Staff ID" value={ticket.staff_no} />
+            <Detail label="Email" value={ticket.email} />
+            <Detail label="Phone" value={ticket.phone} />
+            <Detail label="Location" value={ticket.location} />
+            <Detail label="Department" value={ticket.department} />
+          </DetailGroup>
+        </aside>
       </div>
     </main>
   );
 }
 
-function MetaItem({ icon: Icon, label, value }: { icon: LucideIcon; label: string; value: string }) {
+/**
+ * The first thing anyone wants to know: where is it up to? A dark card with the current state in
+ * plain words, a three-step track with the time each step was reached, and who has it.
+ */
+function StatusCard({
+  className,
+  status,
+  assignee,
+  team,
+  createdAt,
+  lastUpdatedAt,
+  events,
+}: {
+  className: string;
+  status: string;
+  assignee: string | null;
+  team: string;
+  createdAt: Date;
+  lastUpdatedAt: Date;
+  events: { from: string | null; to: string | null; at: Date }[];
+}) {
+
+  const headline =
+    status === "Closed"
+      ? "This ticket is closed"
+      : status === "In Progress"
+        ? `${assignee ?? "IT"} is working on it`
+        : assignee
+          ? `With ${assignee}, not started yet`
+          : "Waiting for IT to pick it up";
+
   return (
-    <div className="flex items-start gap-[7.5px]">
-      <Icon size={13} strokeWidth={2} className="mt-[1.5px] shrink-0 text-faint" />
-      <div className="flex flex-col gap-[1.5px]">
-        <span className="text-[8.5px] font-semibold uppercase tracking-[0.06em] text-muted-2">{label}</span>
-        <span className="text-[11px] font-medium text-ink">{value}</span>
+    <section
+      aria-label="Status"
+      className={`tile-ink home-rise flex flex-col gap-[16px] rounded-[16px] p-[16px] ${className}`}
+      style={{ "--d": "100ms" } as React.CSSProperties}
+    >
+      <div className="flex flex-col gap-[4px]">
+        <span className="text-[12px] text-muted-2">Status</span>
+        <span className="inline-flex items-center gap-[8px] text-[20px] font-semibold tracking-[-0.01em] text-ink">
+          <StatusDot status={status} />
+          {status}
+        </span>
+        <span className="text-[13px] text-muted">{headline}</span>
       </div>
-    </div>
+
+      <StatusSteps status={status} createdAt={createdAt} events={events} />
+
+      <dl className="flex flex-col gap-[8px] border-t border-divider pt-[14px] text-[13px]">
+        <div className="flex items-center justify-between gap-[12px]">
+          <dt className="text-muted-2">Assigned to</dt>
+          <dd className="flex min-w-0 items-center gap-[6px] font-medium text-ink">
+            {assignee ? (
+              <>
+                <Avatar name={assignee} size={18} />
+                <span className="truncate">{assignee}</span>
+              </>
+            ) : (
+              <span className="text-muted">Nobody yet</span>
+            )}
+          </dd>
+        </div>
+        <div className="flex items-center justify-between gap-[12px]">
+          <dt className="text-muted-2">Team</dt>
+          <dd className="truncate font-medium text-ink">{team}</dd>
+        </div>
+        <div className="flex items-center justify-between gap-[12px]">
+          <dt className="text-muted-2">Last update</dt>
+          <dd className="truncate tabular-nums text-ink">{formatTimestamp(lastUpdatedAt)}</dd>
+        </div>
+      </dl>
+    </section>
   );
 }

@@ -10,7 +10,8 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const ACCEPTED_FILE_TYPES = ".pdf,.doc,.docx,.xls,.xlsx,.txt,.zip,image/*";
 
 function formatBytes(bytes: number) {
-  return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 export default function TicketReplyForm({ ticketNumber }: { ticketNumber: string }) {
@@ -90,57 +91,61 @@ export default function TicketReplyForm({ ticketNumber }: { ticketNumber: string
     }
   }
 
+  const problem = fileError ?? error;
+
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-[9px] border-t border-divider pt-[13.5px]">
+    <form
+      onSubmit={handleSubmit}
+      className="flex flex-col overflow-hidden rounded-[14px] border border-card-border bg-surface transition-[border-color,box-shadow] duration-200 focus-within:border-primary/50 focus-within:shadow-[0_0_0_3px_color-mix(in_srgb,var(--primary)_14%,transparent)]"
+    >
+      <label htmlFor="ticket-reply" className="sr-only">
+        Reply to IT
+      </label>
       <textarea
+        id="ticket-reply"
         value={message}
         onChange={(e) => setMessage(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+            e.preventDefault();
+            e.currentTarget.form?.requestSubmit();
+          }
+        }}
         placeholder="Add more information or ask a question…"
         rows={3}
-        className="w-full resize-none rounded-[10px] border border-card-border bg-paper px-[12px] py-[9px] font-body text-[10.5px] text-ink outline-none transition-colors focus:border-primary focus:ring-[3px] focus:ring-primary/10"
+        className="field-bare block min-h-[84px] w-full resize-none bg-transparent px-[16px] pb-[8px] pt-[12px] font-body text-[13px] leading-[21px] text-ink outline-none placeholder:text-faint"
       />
 
-      <div className="flex flex-col gap-[6px]">
-        <label className="inline-flex w-fit cursor-pointer items-center gap-[4.5px] text-[9px] font-semibold text-muted transition-colors hover:text-primary">
-          <Paperclip size={11} strokeWidth={2.25} />
-          Attach files
-          <input
-            type="file"
-            multiple
-            accept={ACCEPTED_FILE_TYPES}
-            className="hidden"
-            onChange={(e) => {
-              handleFiles(e.target.files);
-              e.target.value = "";
-            }}
-          />
-        </label>
-        {fileError && (
-          <span className="text-[9px] font-semibold text-amber-text-strong">{fileError}</span>
-        )}
+      <AnimatePresence initial={false}>
         {files.length > 0 && (
-          <ul className="flex flex-wrap gap-[6px]">
+          <motion.ul
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.18 }}
+            className="flex flex-wrap gap-[6px] overflow-hidden px-[16px]"
+          >
             {files.map((file, i) => (
               <li
                 key={`${file.name}-${i}`}
-                className="inline-flex items-center gap-[6px] rounded-full border border-card-border bg-surface px-[9px] py-[4.5px] text-[9px] text-ink"
+                className="mb-[10px] inline-flex h-[28px] max-w-full items-center gap-[6px] rounded-[8px] bg-surface-2 pl-[8px] pr-[4px] text-[12px] text-ink"
               >
-                <Paperclip size={10} strokeWidth={2.25} className="text-faint" />
-                <span className="max-w-[150px] truncate">
-                  {file.name} <span className="text-faint">({formatBytes(file.size)})</span>
-                </span>
+                <Paperclip size={12} strokeWidth={2} className="shrink-0 text-muted-2" />
+                <span className="min-w-0 max-w-[200px] truncate">{file.name}</span>
+                <span className="shrink-0 tabular-nums text-muted-2">{formatBytes(file.size)}</span>
                 <button
                   type="button"
                   onClick={() => removeFile(i)}
-                  className="text-faint hover:text-[color:var(--color-rose)]"
+                  aria-label={`Remove ${file.name}`}
+                  className="flex h-[20px] w-[20px] shrink-0 items-center justify-center rounded-[5px] text-faint transition-colors hover:bg-surface hover:text-ink"
                 >
-                  <X size={11} strokeWidth={2.5} />
+                  <X size={12} strokeWidth={2.25} />
                 </button>
               </li>
             ))}
-          </ul>
+          </motion.ul>
         )}
-      </div>
+      </AnimatePresence>
 
       <AnimatePresence>
         {submitting && (
@@ -149,37 +154,73 @@ export default function TicketReplyForm({ ticketNumber }: { ticketNumber: string
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.15 }}
-            className="flex flex-col gap-[4.5px] overflow-hidden"
+            className="overflow-hidden"
           >
-            <div className="h-[4px] w-full overflow-hidden rounded-full bg-card-border">
-              <motion.div
-                className="h-full rounded-full bg-admin-gradient"
-                initial={{ width: 0 }}
-                animate={{ width: `${uploadProgress}%` }}
-                transition={{ duration: 0.15, ease: "easeOut" }}
-              />
+            <div className="flex items-center gap-[10px] px-[16px] pb-[10px]">
+              <div className="h-[4px] flex-1 overflow-hidden rounded-full bg-surface-2">
+                <motion.div
+                  className="h-full rounded-full bg-primary"
+                  initial={{ width: 0 }}
+                  animate={{ width: `${uploadProgress}%` }}
+                  transition={{ duration: 0.15, ease: "easeOut" }}
+                />
+              </div>
+              <span className="text-[11px] tabular-nums text-muted-2">
+                {uploadProgress < 100 ? `Uploading ${uploadProgress}%` : "Almost done…"}
+              </span>
             </div>
-            <span className="text-[8.5px] text-faint">
-              {uploadProgress < 100 ? `Uploading… ${uploadProgress}%` : "Almost done…"}
-            </span>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {error && (
-        <div className="flex items-center gap-[6px] text-[9px] font-medium text-amber-text-strong">
-          <AlertTriangle size={11} strokeWidth={2.25} />
-          {error}
-        </div>
-      )}
-      <button
-        type="submit"
-        disabled={submitting || !message.trim()}
-        className="inline-flex w-fit items-center gap-[6px] self-end whitespace-nowrap rounded-full bg-admin-gradient px-[13.5px] py-[7.5px] text-[9.75px] font-semibold text-white disabled:opacity-60"
-      >
-        <Send size={12} strokeWidth={2.25} />
-        {submitting ? "Sending…" : "Send reply"}
-      </button>
+      <div className="flex items-center gap-[8px] border-t border-divider p-[8px]">
+        <label className="inline-flex h-[30px] cursor-pointer items-center gap-[6px] rounded-[8px] px-[8px] text-[12px] font-medium text-muted transition-colors focus-within:bg-surface-2 hover:bg-surface-2 hover:text-ink">
+          <Paperclip size={14} strokeWidth={2} />
+          Attach
+          <span className="hidden font-normal text-faint sm:inline">· up to 2, 5MB each</span>
+          <input
+            type="file"
+            multiple
+            accept={ACCEPTED_FILE_TYPES}
+            className="sr-only"
+            onChange={(e) => {
+              handleFiles(e.target.files);
+              e.target.value = "";
+            }}
+          />
+        </label>
+        <span className="ml-auto hidden text-[11px] text-faint md:inline">Ctrl / ⌘ + Enter</span>
+        <button
+          type="submit"
+          disabled={submitting || !message.trim()}
+          className="group ml-auto inline-flex h-[32px] shrink-0 items-center gap-[6px] rounded-[8px] bg-ink px-[12px] text-[13px] font-medium text-paper transition-[opacity,transform] duration-150 hover:opacity-90 active:scale-[0.97] disabled:cursor-not-allowed disabled:opacity-40 md:ml-0"
+        >
+          {submitting ? "Sending…" : "Send"}
+          <Send
+            size={13}
+            strokeWidth={2}
+            className="transition-transform duration-200 group-enabled:group-hover:-translate-y-[1px] group-enabled:group-hover:translate-x-[1px]"
+          />
+        </button>
+      </div>
+
+      <AnimatePresence initial={false}>
+        {problem && (
+          <motion.div
+            role="alert"
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.15 }}
+            className="overflow-hidden"
+          >
+            <span className="flex items-center gap-[6px] border-t border-divider bg-rose-light px-[16px] py-[8px] text-[12px] font-medium text-rose-text">
+              <AlertTriangle size={13} strokeWidth={2} className="shrink-0" />
+              {problem}
+            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </form>
   );
 }

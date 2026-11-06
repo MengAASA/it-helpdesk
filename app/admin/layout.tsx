@@ -40,7 +40,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         viewActivity: permissions.viewActivity,
       }}
       onlineUsers={onlineUsers}
-      initialCollapsed={cookieStore.get(SIDEBAR_COOKIE)?.value === "collapsed"}
+      // Collapsed unless this browser has chosen to keep it expanded.
+      initialCollapsed={cookieStore.get(SIDEBAR_COOKIE)?.value !== "expanded"}
     >
       <SessionWatcher loginUrl={iamsLoginUrl("/admin")} />
       <PageTransition>{children}</PageTransition>

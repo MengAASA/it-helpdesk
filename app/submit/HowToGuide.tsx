@@ -2,95 +2,103 @@
 
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { HelpCircle, ChevronDown, ChevronUp } from "lucide-react";
+
+type Lang = "en" | "ms";
+
+/** Button names stay in English in both languages, because that's what the buttons say. */
+const GUIDE: Record<Lang, { title: string; steps: React.ReactNode[]; tip: React.ReactNode }> = {
+  en: {
+    title: "How it works",
+    steps: [
+      <>Describe the problem in your own words, e.g. &ldquo;My printer is not working&rdquo;.</>,
+      <>Wait a moment. Boboi suggests the right category for you.</>,
+      <>
+        Click <strong className="font-medium text-ink">Continue with this category</strong>.
+      </>,
+      <>
+        Fill in your details, then click <strong className="font-medium text-ink">Submit ticket</strong>.
+      </>,
+    ],
+    tip: (
+      <>
+        Rather choose it yourself? Click <strong className="font-medium text-ink">Pick the category myself</strong>.
+      </>
+    ),
+  },
+  ms: {
+    title: "Cara menghantar tiket",
+    steps: [
+      <>Terangkan masalah anda menggunakan ayat sendiri, contoh: &ldquo;Pencetak saya tidak berfungsi&rdquo;.</>,
+      <>Tunggu sebentar. Boboi akan mencadangkan kategori yang sesuai.</>,
+      <>
+        Klik <strong className="font-medium text-ink">Continue with this category</strong>.
+      </>,
+      <>
+        Isikan maklumat anda, kemudian klik <strong className="font-medium text-ink">Submit ticket</strong>.
+      </>,
+    ],
+    tip: (
+      <>
+        Mahu pilih sendiri? Klik <strong className="font-medium text-ink">Pick the category myself</strong>.
+      </>
+    ),
+  },
+};
 
 export default function HowToGuide() {
-  const [open, setOpen] = useState(true);
+  const [lang, setLang] = useState<Lang>("en");
+  const g = GUIDE[lang];
 
   return (
-    <div className="flex flex-col gap-[12px] rounded-[10.5px] border border-[color:var(--color-blue)]/25 bg-[color:var(--color-blue-light)]/40 px-[18px] py-[15px]">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="flex items-center justify-between gap-[9px] text-left"
-      >
-        <span className="inline-flex items-center gap-[7.5px] text-[11.25px] font-semibold text-[color:var(--color-blue-text)]">
-          <HelpCircle size={14} strokeWidth={2.25} />
-          How to submit a ticket · Cara menghantar tiket
-        </span>
-        <motion.span
-          animate={{ rotate: open ? 0 : 180 }}
-          transition={{ duration: 0.18 }}
-          className="shrink-0 text-[color:var(--color-blue-text)]"
+    <section aria-label="How to submit a ticket" className="rounded-[16px] border border-card-border/60 bg-surface p-[16px]">
+      <div className="flex items-center justify-between gap-[12px]">
+        <h2 className="text-[13px] font-semibold text-ink">{g.title}</h2>
+        <div role="tablist" aria-label="Language" className="inline-flex h-[26px] items-center rounded-[7px] bg-surface-2 p-[2px]">
+          {(["en", "ms"] as const).map((l) => (
+            <button
+              key={l}
+              type="button"
+              role="tab"
+              aria-selected={lang === l}
+              onClick={() => setLang(l)}
+              className={`relative h-[22px] rounded-[5px] px-[8px] text-[11px] font-medium transition-colors ${
+                lang === l ? "text-ink" : "text-muted-2 hover:text-ink"
+              }`}
+            >
+              {lang === l && (
+                <motion.span
+                  layoutId="guide-lang"
+                  transition={{ type: "spring", stiffness: 500, damping: 36 }}
+                  className="absolute inset-0 rounded-[5px] bg-surface shadow-card"
+                />
+              )}
+              <span className="relative">{l === "en" ? "EN" : "BM"}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          key={lang}
+          initial={{ opacity: 0, y: 4 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0 }}
+          transition={{ duration: 0.15 }}
         >
-          {open ? <ChevronUp size={14} strokeWidth={2.25} /> : <ChevronDown size={14} strokeWidth={2.25} />}
-        </motion.span>
-      </button>
-
-      <AnimatePresence initial={false}>
-        {open && (
-          <motion.div
-            key="content"
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.22, ease: [0.4, 0, 0.2, 1] }}
-            className="overflow-hidden"
-          >
-            <div className="flex flex-col gap-[15px]">
-              <div className="flex flex-col gap-[7.5px]">
-                <span className="text-[9px] font-semibold uppercase tracking-[0.08em] text-muted-2">
-                  English
+          <ol className="mt-[12px] flex flex-col gap-[10px]">
+            {g.steps.map((step, i) => (
+              <li key={i} className="flex gap-[10px] text-[13px] leading-[20px] text-muted">
+                <span className="mt-[1px] flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-full bg-surface-2 text-[11px] font-medium tabular-nums text-ink">
+                  {i + 1}
                 </span>
-                <ol className="flex list-decimal flex-col gap-[6px] pl-[16px] text-[11.25px] leading-[1.6] text-ink">
-                  <li>
-                    Describe your problem in the box below, in your own words (e.g. &quot;My
-                    printer is not working&quot;).
-                  </li>
-                  <li>Wait a few seconds. The system will suggest the right category for you automatically.</li>
-                  <li>
-                    Click <strong>Continue with this category</strong> to proceed.
-                  </li>
-                  <li>
-                    Fill in your name, phone number and other details, then click{" "}
-                    <strong>Submit ticket</strong>.
-                  </li>
-                </ol>
-                <p className="text-[10.5px] leading-[1.6] text-muted">
-                  Don&apos;t want to type a description? Click{" "}
-                  <strong>Prefer to pick the category yourself?</strong> to choose it manually
-                  from a list instead.
-                </p>
-              </div>
-
-              <div className="flex flex-col gap-[7.5px] border-t border-[color:var(--color-blue)]/20 pt-[12px]">
-                <span className="text-[9px] font-semibold uppercase tracking-[0.08em] text-muted-2">
-                  Bahasa Malaysia
-                </span>
-                <ol className="flex list-decimal flex-col gap-[6px] pl-[16px] text-[11.25px] leading-[1.6] text-ink">
-                  <li>
-                    Terangkan masalah anda dalam kotak di bawah, menggunakan ayat sendiri
-                    (contoh: &quot;Pencetak saya tidak berfungsi&quot;).
-                  </li>
-                  <li>Tunggu beberapa saat, sistem akan mencadangkan kategori yang sesuai secara automatik.</li>
-                  <li>
-                    Klik <strong>Continue with this category</strong> untuk teruskan.
-                  </li>
-                  <li>
-                    Isikan nama, nombor telefon dan maklumat lain, kemudian klik{" "}
-                    <strong>Submit ticket</strong>.
-                  </li>
-                </ol>
-                <p className="text-[10.5px] leading-[1.6] text-muted">
-                  Tidak mahu menaip penerangan? Klik{" "}
-                  <strong>Prefer to pick the category yourself?</strong> untuk pilih kategori
-                  secara manual daripada senarai.
-                </p>
-              </div>
-            </div>
-          </motion.div>
-        )}
+                <span>{step}</span>
+              </li>
+            ))}
+          </ol>
+          <p className="mt-[12px] border-t border-card-border/60 pt-[12px] text-[12px] leading-[18px] text-muted-2">{g.tip}</p>
+        </motion.div>
       </AnimatePresence>
-    </div>
+    </section>
   );
 }

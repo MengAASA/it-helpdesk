@@ -136,3 +136,35 @@ export async function getAgentPerformance(): Promise<AgentRow[]> {
     }))
     .sort((a, b) => b.assigned - a.assigned);
 }
+
+/**
+ * Only tickets whose closure was captured as a "status -> Closed" ticket_events row
+ * count toward this average — tickets closed before event logging existed, or closed
+ * without a status transition being recorded, aren't included.
+ */
+export async function getAvgResolutionHours(): Promise<{ avgHours: number | null; sampleSize: number }> {
+  const closureEvents = await prisma.ticket_events.findMany({
+    where: { event_type: "status", to_value: "Closed" },
+    select: { ticket_id: true, created_at: true, tickets: { select: { created_at: true } } },
+    orderBy: { created_at: "desc" },
+  });
+
+  const latestByTicket = new Map<number, number>();
+  for (const e of closureEvents) {
+    if (latestByTicket.has(e.ticket_id)) continue;
+    const hours = (e.created_at.getTime() - e.tickets.created_at.getTime()) / (1000 * 60 * 60);
+    if (hours >= 0) latestByTicket.set(e.ticket_id, hours);
+  }
+
+  const durations = Array.from(latestByTicket.values());
+  if (durations.length === 0) return { avgHours: null, sampleSize: 0 };
+  return {
+    avgHours: durations.reduce((a, b) => a + b, 0) / durations.length,
+    sampleSize: durations.length,
+  };
+}
+
+/** 27.4 → "27.4h"; two days or more reads in days ("3.2d"). */
+export function formatDuration(hours: number): string {
+  return hours < 48 ? `${hours.toFixed(1)}h` : `${(hours / 24).toFixed(1)}d`;
+}

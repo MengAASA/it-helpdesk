@@ -5,17 +5,15 @@ import { getIamsSession } from "@/app/lib/iamsSession";
 import { getIamsUsers } from "@/app/lib/iamsUsers";
 import { getPermissionsFor } from "@/app/lib/permissions";
 import { getCannedResponses } from "@/app/lib/cannedResponsesServer";
+import Link from "next/link";
+import { ArrowUpRight } from "lucide-react";
+import { PriorityBadge } from "@/app/components/TicketBadges";
+import CopyButton from "@/app/tickets/[ticketNumber]/CopyButton";
 import TicketWorkspace from "./TicketWorkspace";
 
 function formatTimestamp(iso: string | Date): string {
   return new Date(iso).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
 }
-
-const PRIORITY_STYLES: Record<string, string> = {
-  High: "border-[color:var(--color-rose)]/30 bg-white/15 text-white",
-  Normal: "border-white/30 bg-white/15 text-white",
-  Low: "border-[color:var(--color-emerald)]/30 bg-white/15 text-white",
-};
 
 export async function generateMetadata({
   params,
@@ -72,23 +70,40 @@ export default async function TicketDetail({
     }));
 
   return (
-    <div className="flex flex-col gap-[18px]">
-      <div className="flex flex-wrap items-start justify-between gap-[15px] rounded-[16px] bg-admin-gradient px-[24px] py-[21px] text-white shadow-[0_10px_28px_rgba(46,16,101,0.25)]">
-        <div className="flex flex-col gap-[4.5px]">
-          <span className="font-mono-plex text-[10.5px] text-white/75">{ticket.ticket_number}</span>
-          <h1 className="font-heading text-[21px] font-semibold tracking-[-0.02em]">{ticket.subject}</h1>
+    <div className="flex flex-col gap-[20px]">
+      <header className="home-rise flex flex-wrap items-end justify-between gap-x-[16px] gap-y-[10px]">
+        <div className="flex min-w-0 flex-col gap-[8px]">
+          <h1 className="max-w-[820px] text-[22px] font-semibold leading-[28px] tracking-[-0.02em] text-ink">{ticket.subject}</h1>
+          <div className="flex flex-wrap items-center gap-x-[10px] gap-y-[6px] text-[12px] text-muted-2">
+            <span className="inline-flex h-[24px] items-center gap-[6px] rounded-[6px] border border-card-border bg-surface pl-[8px] pr-[4px] text-[12px] font-medium tabular-nums text-ink">
+              {ticket.ticket_number}
+              <CopyButton
+                value={ticket.ticket_number}
+                label="Copy ticket ID"
+                className="flex h-[18px] w-[18px] items-center justify-center rounded-[4px] text-faint transition-colors hover:bg-surface-2 hover:text-ink"
+              />
+            </span>
+            <PriorityBadge priority={ticket.priority} />
+            <span>
+              {ticket.category}
+              <span aria-hidden="true" className="px-[8px]">·</span>
+              Opened {formatTimestamp(ticket.created_at)}
+            </span>
+          </div>
         </div>
-        <span
-          className={`rounded-full border px-[10.5px] py-[4.5px] text-[9px] font-semibold uppercase tracking-[0.05em] ${
-            PRIORITY_STYLES[ticket.priority] ?? PRIORITY_STYLES.Normal
-          }`}
+        <Link
+          href={`/tickets/${encodeURIComponent(ticket.ticket_number)}`}
+          target="_blank"
+          className="group inline-flex h-[32px] shrink-0 items-center gap-[6px] rounded-[8px] border border-card-border bg-surface px-[10px] text-[12px] font-medium text-muted transition-colors hover:border-field-border-hover hover:text-ink"
         >
-          {ticket.priority} priority
-        </span>
-      </div>
+          Requester&apos;s view
+          <ArrowUpRight size={14} strokeWidth={2} className="transition-transform duration-200 group-hover:-translate-y-[1px] group-hover:translate-x-[1px]" />
+        </Link>
+      </header>
 
       <TicketWorkspace
         ticketNumber={ticket.ticket_number}
+        createdAt={ticket.created_at.toISOString()}
         initialStatus={ticket.status}
         initialAssignedTo={ticket.assigned_to}
         initialNotes={notes.map((n) => ({

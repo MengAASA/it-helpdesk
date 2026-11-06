@@ -52,7 +52,7 @@ function fade(narrow: boolean) {
   }`;
 }
 
-function buildSections(access: SidebarAccess, userName: string): { label: string; items: NavItem[] }[] {
+export function buildSections(access: SidebarAccess, userName: string): { label: string; items: NavItem[] }[] {
   const mine = `/admin/tickets?assignee=${encodeURIComponent(userName)}`;
   const sections = [
     {
@@ -383,7 +383,7 @@ export default function AdminSidebar({
           </button>
         </div>
 
-        <nav aria-label="Admin" className="relative flex flex-1 flex-col gap-[2px] overflow-y-auto overflow-x-hidden px-[8px] pb-[8px]">
+        <nav aria-label="Admin" className="no-scrollbar relative flex flex-1 flex-col gap-[2px] overflow-y-auto overflow-x-hidden px-[8px] pb-[8px]">
           <Suspense fallback={<NavLinks sections={sections} narrow={narrow} onNavigate={onCloseMobile} search={new URLSearchParams()} />}>
             <NavLinksWithSearch sections={sections} narrow={narrow} onNavigate={onCloseMobile} />
           </Suspense>
