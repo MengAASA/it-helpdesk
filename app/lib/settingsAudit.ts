@@ -3,7 +3,7 @@ import type { Permissions } from "@/app/lib/permissions";
 import type { EmailSettings } from "@/app/lib/emailSettings";
 import type { SlaHours } from "@/app/lib/sla";
 
-export type SettingsAuditCategory = "permissions" | "email_settings" | "sla_settings" | "system_links";
+export type SettingsAuditCategory = "permissions" | "email_settings" | "sla_settings" | "system_links" | "deleted_tickets";
 
 export type SettingsAuditRow = {
   id: number;
@@ -160,6 +160,24 @@ export async function logSystemLinkChange(opts: {
     summary: `${verb} link "${opts.name}" (${host})`.slice(0, 500),
     actorName: opts.actorName,
     actorEmail: opts.actorEmail,
+  });
+}
+
+/** One row per deleted ticket, so each stays findable by its ID in the Activity log. */
+export async function logTicketDeletions(opts: {
+  tickets: { ticketNumber: string; subject: string; requesterName: string }[];
+  actorName: string;
+  actorEmail: string;
+}): Promise<void> {
+  if (opts.tickets.length === 0) return;
+  await prisma.settings_audit_log.createMany({
+    data: opts.tickets.map((t) => ({
+      category: "deleted_tickets",
+      target: t.ticketNumber.slice(0, 64),
+      summary: `Deleted ${t.ticketNumber} "${t.subject}" from ${t.requesterName}`.slice(0, 500),
+      actor_name: opts.actorName,
+      actor_email: opts.actorEmail,
+    })),
   });
 }
 

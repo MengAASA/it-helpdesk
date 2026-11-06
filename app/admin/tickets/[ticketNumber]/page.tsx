@@ -9,7 +9,9 @@ import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { PriorityBadge } from "@/app/components/TicketBadges";
 import CopyButton from "@/app/tickets/[ticketNumber]/CopyButton";
+import { canDeleteTickets } from "@/app/lib/ticketDeletion";
 import TicketWorkspace from "./TicketWorkspace";
+import DeleteTicketButton from "./DeleteTicketButton";
 
 function formatTimestamp(iso: string | Date): string {
   return new Date(iso).toLocaleString("en-US", { dateStyle: "medium", timeStyle: "short" });
@@ -50,6 +52,7 @@ export default async function TicketDetail({
   const session = await getIamsSession();
   const permissions = session ? await getPermissionsFor(session.staffId, session.role) : null;
   const canManage = permissions?.manageTickets ?? false;
+  const canDelete = !!session && canDeleteTickets(session.role, canManage);
   const userRequestTypes = JSON.parse(ticket.user_request_types) as string[];
   const cannedResponses = canManage ? await getCannedResponses() : [];
 
@@ -91,14 +94,17 @@ export default async function TicketDetail({
             </span>
           </div>
         </div>
-        <Link
-          href={`/tickets/${encodeURIComponent(ticket.ticket_number)}`}
-          target="_blank"
-          className="group inline-flex h-[32px] shrink-0 items-center gap-[6px] rounded-[8px] border border-card-border bg-surface px-[10px] text-[12px] font-medium text-muted transition-colors hover:border-field-border-hover hover:text-ink"
-        >
-          Requester&apos;s view
-          <ArrowUpRight size={14} strokeWidth={2} className="transition-transform duration-200 group-hover:-translate-y-[1px] group-hover:translate-x-[1px]" />
-        </Link>
+        <div className="flex shrink-0 items-center gap-[8px]">
+          <Link
+            href={`/tickets/${encodeURIComponent(ticket.ticket_number)}`}
+            target="_blank"
+            className="group inline-flex h-[32px] shrink-0 items-center gap-[6px] rounded-[8px] border border-card-border bg-surface px-[10px] text-[12px] font-medium text-muted transition-colors hover:border-field-border-hover hover:text-ink"
+          >
+            Requester&apos;s view
+            <ArrowUpRight size={14} strokeWidth={2} className="transition-transform duration-200 group-hover:-translate-y-[1px] group-hover:translate-x-[1px]" />
+          </Link>
+          {canDelete && <DeleteTicketButton ticketNumber={ticket.ticket_number} />}
+        </div>
       </header>
 
       <TicketWorkspace

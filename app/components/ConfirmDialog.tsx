@@ -13,6 +13,7 @@ export default function ConfirmDialog({
   cancelLabel = "Cancel",
   danger,
   loading,
+  confirmDisabled,
   onConfirm,
   onCancel,
 }: {
@@ -24,6 +25,8 @@ export default function ConfirmDialog({
   cancelLabel?: string;
   danger?: boolean;
   loading?: boolean;
+  /** Keeps the confirm button off, e.g. until a typed confirmation matches. */
+  confirmDisabled?: boolean;
   onConfirm: () => void;
   onCancel: () => void;
 }) {
@@ -97,7 +100,7 @@ export default function ConfirmDialog({
               <button
                 type="button"
                 onClick={onConfirm}
-                disabled={loading}
+                disabled={loading || confirmDisabled}
                 className={`inline-flex items-center gap-[6px] whitespace-nowrap rounded-full px-[15px] py-[7.5px] text-[9.75px] font-semibold text-white disabled:opacity-60 ${
                   danger ? "bg-[color:var(--color-amber-solid)]" : "bg-admin-gradient"
                 }`}

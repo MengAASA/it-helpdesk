@@ -16,6 +16,7 @@ import {
   Download,
   TimerReset,
   UserRound,
+  Trash2,
 } from "lucide-react";
 import type { tickets as TicketRow } from "@prisma/client";
 import { isOverdue, isAtRisk, type SlaHours } from "@/app/lib/sla";
@@ -23,6 +24,7 @@ import { csvEscape } from "@/app/lib/csv";
 import Avatar from "@/app/components/Avatar";
 import FilterDropdown from "@/app/components/FilterDropdown";
 import ConfirmDialog from "@/app/components/ConfirmDialog";
+import TypeToConfirm, { confirmMatches } from "./TypeToConfirm";
 import { StatusDot, OverdueBadge, AtRiskBadge, PriorityBadge, PriorityDot } from "@/app/components/TicketBadges";
 import { useDismiss } from "@/app/components/useDismiss";
 import AssigneeLookup, { type AssigneeOption } from "./tickets/[ticketNumber]/AssigneeLookup";
@@ -32,6 +34,7 @@ import { TEAM_DOT, teamShort } from "./teamStyle";
 const BULK_STATUSES = ["Open", "In Progress", "Closed"] as const;
 const BULK_PRIORITIES = ["High", "Normal", "Low"] as const;
 const BULK_CHUNK_SIZE = 100;
+const DELETE_PHRASE = "delete";
 const NEW_DATA_POLL_MS = 30_000;
 const EASE_OUT = [0.22, 1, 0.36, 1] as const;
 
@@ -150,12 +153,15 @@ export default function TicketsTable({
   tickets,
   slaHours,
   canManage,
+  canDelete = false,
   assigneeOptions,
   initialFilters,
 }: {
   tickets: TicketWithLabel[];
   slaHours: SlaHours;
   canManage: boolean;
+  /** IAMS admins only: shows "Delete" in the bulk bar. */
+  canDelete?: boolean;
   assigneeOptions: AssigneeOption[];
   initialFilters?: InitialFilters;
 }) {
@@ -184,8 +190,11 @@ export default function TicketsTable({
     | null
     | { kind: "success"; updated: number }
     | { kind: "partial"; updated: number; notFoundCount: number }
-    | { kind: "error" }
+    | { kind: "deleted"; deleted: number }
+    | { kind: "error"; message?: string }
   >(null);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [deleteTyped, setDeleteTyped] = useState("");
   const headerCheckboxRef = useRef<HTMLInputElement>(null);
 
   const [search, setSearch] = useState(initialFilters?.search ?? "");
@@ -451,6 +460,45 @@ export default function TicketsTable({
     }
   }
 
+  function closeDeleteDialog() {
+    if (applying) return;
+    setConfirmingDelete(false);
+    setDeleteTyped("");
+  }
+
+  async function handleBulkDelete() {
+    if (applying || !confirmMatches(deleteTyped, DELETE_PHRASE)) return;
+    const ticketNumbers = selectAllMatching ? sorted.map((t) => t.ticket_number) : Array.from(selected);
+    setApplying(true);
+    let deleted = 0;
+    try {
+      for (const c of chunk(ticketNumbers, BULK_CHUNK_SIZE)) {
+        const res = await fetch(`${basePath}/api/admin/tickets/bulk`, {
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ ticketNumbers: c }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error ?? "Failed to delete tickets");
+        deleted += data.deleted;
+      }
+      setBulkResult({ kind: "deleted", deleted });
+    } catch (err) {
+      // Earlier chunks may already be gone, so say how many went before the failure.
+      const reason = err instanceof Error ? err.message : "Failed to delete tickets";
+      setBulkResult({ kind: "error", message: deleted > 0 ? `Deleted ${deleted}, then failed: ${reason}` : reason });
+    } finally {
+      clearSelection();
+      setConfirmingDelete(false);
+      setDeleteTyped("");
+      setApplying(false);
+      setHasNewData(false);
+      setSince(new Date());
+      router.refresh();
+      setTimeout(() => setBulkResult(null), 4000);
+    }
+  }
+
   const bulkBarOpen = canManage && selectionCount > 0;
 
   return (
@@ -576,7 +624,7 @@ export default function TicketsTable({
         <div
           role="status"
           className={`inline-flex h-[28px] w-fit items-center gap-[6px] rounded-[8px] px-[10px] text-[12px] font-medium ${
-            bulkResult.kind === "success"
+            bulkResult.kind === "success" || bulkResult.kind === "deleted"
               ? "bg-emerald-light text-emerald-text"
               : bulkResult.kind === "partial"
               ? "bg-amber-bg text-amber-text"
@@ -587,7 +635,8 @@ export default function TicketsTable({
           {bulkResult.kind === "success" && `Updated ${bulkResult.updated} ticket${bulkResult.updated === 1 ? "" : "s"}`}
           {bulkResult.kind === "partial" &&
             `Updated ${bulkResult.updated} ticket${bulkResult.updated === 1 ? "" : "s"}; ${bulkResult.notFoundCount} no longer exist${bulkResult.notFoundCount === 1 ? "s" : ""}`}
-          {bulkResult.kind === "error" && "Failed to update tickets"}
+          {bulkResult.kind === "deleted" && `Deleted ${bulkResult.deleted} ticket${bulkResult.deleted === 1 ? "" : "s"}`}
+          {bulkResult.kind === "error" && (bulkResult.message ?? "Failed to update tickets")}
         </div>
       )}
 
@@ -610,6 +659,20 @@ export default function TicketsTable({
         onConfirm={handleApplyBulk}
         onCancel={() => !applying && setPendingAction(null)}
       />
+
+      <ConfirmDialog
+        open={confirmingDelete}
+        danger
+        loading={applying}
+        confirmDisabled={!confirmMatches(deleteTyped, DELETE_PHRASE)}
+        title={`Delete ${selectionCount} ticket${selectionCount === 1 ? "" : "s"}?`}
+        description="This permanently removes every selected ticket with its conversation, history and attached files. They will also disappear from reports. This can't be undone."
+        confirmLabel={`Delete ${selectionCount}`}
+        onConfirm={handleBulkDelete}
+        onCancel={closeDeleteDialog}
+      >
+        <TypeToConfirm phrase={DELETE_PHRASE} value={deleteTyped} onChange={setDeleteTyped} onSubmit={handleBulkDelete} />
+      </ConfirmDialog>
 
       {/*
         A list laid out like a table: every column has a fixed slot and a divider, and the secondary
@@ -801,6 +864,20 @@ export default function TicketsTable({
                 disabled={applying}
                 onApply={() => setPendingAction({ type: "assign", assignedTo: bulkAssignee })}
               />
+              {canDelete && (
+                <>
+                  <span className="mx-[4px] h-[18px] w-px bg-white/15" aria-hidden="true" />
+                  <button
+                    type="button"
+                    onClick={() => setConfirmingDelete(true)}
+                    disabled={applying}
+                    className="inline-flex h-[30px] items-center gap-[6px] rounded-[8px] px-[10px] text-[13px] text-rose-300 transition-colors hover:bg-rose-500/20 hover:text-rose-200 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    <Trash2 size={14} strokeWidth={2} />
+                    Delete
+                  </button>
+                </>
+              )}
               {applying && (
                 <span className="inline-flex items-center gap-[6px] px-[8px] text-[12px] text-white/70">
                   <Loader2 size={14} strokeWidth={2} className="animate-spin" />

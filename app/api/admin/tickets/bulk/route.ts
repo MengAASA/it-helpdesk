@@ -3,6 +3,7 @@ import { prisma } from "@/app/lib/db";
 import { getIamsSession } from "@/app/lib/iamsSession";
 import { getPermissionsFor, getCachedEmailByName } from "@/app/lib/permissions";
 import { notifyStatusChanged, notifyTicketAssigned } from "@/app/lib/notifications";
+import { canDeleteTickets, deleteTickets } from "@/app/lib/ticketDeletion";
 
 const ALLOWED_STATUSES = ["Open", "In Progress", "Closed"];
 const ALLOWED_PRIORITIES = ["Low", "Normal", "High"];
@@ -181,4 +182,36 @@ export async function PATCH(req: Request) {
   }
 
   return NextResponse.json({ ok: true, updated: existingRows.length, notFound });
+}
+
+/** Permanently deletes the selected tickets. IAMS admins only. */
+export async function DELETE(req: Request) {
+  const session = await getIamsSession();
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const permissions = await getPermissionsFor(session.staffId, session.role);
+  if (!canDeleteTickets(session.role, permissions.manageTickets)) {
+    return NextResponse.json({ error: "Only admins can delete tickets" }, { status: 403 });
+  }
+
+  const body = await req.json().catch(() => null);
+  const raw: unknown = body?.ticketNumbers;
+  if (!Array.isArray(raw) || raw.some((t) => typeof t !== "string" || !t)) {
+    return NextResponse.json({ error: "ticketNumbers must be a non-empty array" }, { status: 400 });
+  }
+  const ticketNumbers = Array.from(new Set(raw as string[]));
+  if (ticketNumbers.length === 0) {
+    return NextResponse.json({ error: "No tickets selected" }, { status: 400 });
+  }
+  if (ticketNumbers.length > MAX_BULK_SIZE) {
+    return NextResponse.json(
+      { error: `Too many tickets selected (max ${MAX_BULK_SIZE} per request)` },
+      { status: 400 }
+    );
+  }
+
+  const { deleted, notFound } = await deleteTickets(ticketNumbers, { name: session.name, email: session.email });
+  return NextResponse.json({ ok: true, deleted: deleted.length, notFound });
 }

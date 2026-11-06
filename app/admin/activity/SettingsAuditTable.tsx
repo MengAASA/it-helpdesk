@@ -5,7 +5,7 @@ import { SortHeader } from "../listParts";
 import { ActorCell, KindTag, LogFooter, LogList, LogToolbar, TimeCell, useLogList, COL_SEP, LOG_ROW, type LogStamp } from "./logParts";
 
 export type SettingsAuditRow = LogStamp & {
-  category: "permissions" | "email_settings" | "sla_settings" | "system_links";
+  category: "permissions" | "email_settings" | "sla_settings" | "system_links" | "deleted_tickets";
   target: string | null;
   summary: string;
   actorName: string;
@@ -18,6 +18,7 @@ const CATEGORY: Record<string, { label: string; dot: string }> = {
   email_settings: { label: "Email settings", dot: "bg-chart-sky" },
   sla_settings: { label: "SLA settings", dot: "bg-chart-amber" },
   system_links: { label: "System links", dot: "bg-lime-bright" },
+  deleted_tickets: { label: "Deleted tickets", dot: "bg-rose-text" },
 };
 
 function categoryLabel(c: string): string {

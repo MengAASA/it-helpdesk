@@ -5,6 +5,7 @@ import { getSlaHours } from "@/app/lib/slaSettings";
 import { getIamsSession } from "@/app/lib/iamsSession";
 import { getIamsUsers } from "@/app/lib/iamsUsers";
 import { getPermissionsFor } from "@/app/lib/permissions";
+import { canDeleteTickets } from "@/app/lib/ticketDeletion";
 import TicketsTable, { SORT_KEYS, type InitialFilters, type SortKey } from "../TicketsTable";
 import type { AssigneeOption } from "./[ticketNumber]/AssigneeLookup";
 
@@ -89,6 +90,7 @@ export default async function AdminTickets({
         }))}
         slaHours={slaHours}
         canManage={canManage}
+        canDelete={!!session && canDeleteTickets(session.role, canManage)}
         assigneeOptions={assigneeOptions}
         initialFilters={initialFilters}
       />

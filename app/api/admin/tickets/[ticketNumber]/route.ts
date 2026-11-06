@@ -3,6 +3,7 @@ import { prisma } from "@/app/lib/db";
 import { getIamsSession } from "@/app/lib/iamsSession";
 import { getPermissionsFor, getCachedEmailByName } from "@/app/lib/permissions";
 import { notifyStatusChanged, notifyTicketAssigned } from "@/app/lib/notifications";
+import { canDeleteTickets, deleteTickets } from "@/app/lib/ticketDeletion";
 
 const ALLOWED_STATUSES = ["Open", "In Progress", "Closed"];
 
@@ -91,6 +92,30 @@ export async function PATCH(
         assigneeName: event.to,
       });
     }
+  }
+
+  return NextResponse.json({ ok: true });
+}
+
+/** Permanently deletes one ticket. IAMS admins only. */
+export async function DELETE(
+  _req: Request,
+  { params }: RouteContext<"/api/admin/tickets/[ticketNumber]">
+) {
+  const session = await getIamsSession();
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const permissions = await getPermissionsFor(session.staffId, session.role);
+  if (!canDeleteTickets(session.role, permissions.manageTickets)) {
+    return NextResponse.json({ error: "Only admins can delete tickets" }, { status: 403 });
+  }
+
+  const { ticketNumber } = await params;
+  const { deleted } = await deleteTickets([ticketNumber], { name: session.name, email: session.email });
+  if (deleted.length === 0) {
+    return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
   }
 
   return NextResponse.json({ ok: true });

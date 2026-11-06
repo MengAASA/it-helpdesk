@@ -86,7 +86,7 @@ export default async function ActivityBody() {
         <h1 className="text-[22px] font-semibold tracking-[-0.02em] text-ink">Activity</h1>
         <p className="text-[13px] text-muted-2">
           Who changed what, newest first. Shows the latest {EVENT_LIMIT} ticket changes and the latest {EVENT_LIMIT}{" "}
-          permission and settings changes.
+          permission, settings and ticket deletion records.
         </p>
       </div>
 
