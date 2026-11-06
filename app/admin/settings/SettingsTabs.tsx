@@ -2,10 +2,10 @@
 
 import { useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { FileText, Mail, Mails, TimerReset } from "lucide-react";
+import { FileText, ListChecks, Mail, Mails, TimerReset } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
-export type SettingsTabKey = "email" | "sla" | "templates" | "emailTemplates";
+export type SettingsTabKey = "email" | "sla" | "templates" | "emailTemplates" | "formOptions";
 
 /** What each area's tab says about it right now, worked out on the server from saved settings. */
 export type TabSummary = {
@@ -21,6 +21,7 @@ const TABS: { key: SettingsTabKey; label: string; icon: LucideIcon }[] = [
   { key: "sla", label: "SLA", icon: TimerReset },
   { key: "templates", label: "Canned replies", icon: FileText },
   { key: "emailTemplates", label: "Email templates", icon: Mails },
+  { key: "formOptions", label: "Form options", icon: ListChecks },
 ];
 
 export default function SettingsTabs({
@@ -28,15 +29,17 @@ export default function SettingsTabs({
   sla,
   templates,
   emailTemplates,
+  formOptions,
   summaries,
 }: {
   email: React.ReactNode;
   sla: React.ReactNode;
   templates: React.ReactNode;
   emailTemplates: React.ReactNode;
+  formOptions: React.ReactNode;
   summaries: Partial<Record<SettingsTabKey, TabSummary>>;
 }) {
-  const panels = { email, sla, templates, emailTemplates };
+  const panels = { email, sla, templates, emailTemplates, formOptions };
   const visibleTabs = TABS.filter((t) => panels[t.key]);
   const [active, setActive] = useState<SettingsTabKey>(visibleTabs[0]?.key ?? "email");
 
@@ -48,7 +51,11 @@ export default function SettingsTabs({
           role="tablist"
           aria-label="Settings"
           className={`tile-ink grid grid-cols-2 gap-[4px] rounded-[16px] p-[6px] ${
-            visibleTabs.length >= 3 ? "@min-[860px]:grid-cols-4" : ""
+            visibleTabs.length >= 5
+              ? "@min-[640px]:grid-cols-3 @min-[1040px]:grid-cols-5"
+              : visibleTabs.length >= 3
+                ? "@min-[860px]:grid-cols-4"
+                : ""
           }`}
         >
           {visibleTabs.map((t) => {

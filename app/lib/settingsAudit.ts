@@ -3,7 +3,13 @@ import type { Permissions } from "@/app/lib/permissions";
 import type { EmailSettings } from "@/app/lib/emailSettings";
 import type { SlaHours } from "@/app/lib/sla";
 
-export type SettingsAuditCategory = "permissions" | "email_settings" | "sla_settings" | "system_links" | "deleted_tickets";
+export type SettingsAuditCategory =
+  | "permissions"
+  | "email_settings"
+  | "sla_settings"
+  | "system_links"
+  | "deleted_tickets"
+  | "form_options";
 
 export type SettingsAuditRow = {
   id: number;
@@ -158,6 +164,35 @@ export async function logSystemLinkChange(opts: {
   await logSettingsChange({
     category: "system_links",
     summary: `${verb} link "${opts.name}" (${host})`.slice(0, 500),
+    actorName: opts.actorName,
+    actorEmail: opts.actorEmail,
+  });
+}
+
+/** "Departments: added "X", removed "Y", reordered". Nothing is logged when the list didn't change. */
+export async function logFormOptionsChange(opts: {
+  listLabel: string;
+  before: string[];
+  after: string[];
+  actorName: string;
+  actorEmail: string;
+}): Promise<void> {
+  const added = opts.after.filter((v) => !opts.before.includes(v));
+  const removed = opts.before.filter((v) => !opts.after.includes(v));
+  const kept = opts.after.filter((v) => opts.before.includes(v));
+  const keptBefore = opts.before.filter((v) => opts.after.includes(v));
+  const reordered = kept.some((v, i) => v !== keptBefore[i]);
+
+  const quote = (vs: string[]) => vs.map((v) => `"${v}"`).join(", ");
+  const changes: string[] = [];
+  if (added.length) changes.push(`added ${quote(added)}`);
+  if (removed.length) changes.push(`removed ${quote(removed)}`);
+  if (reordered) changes.push("reordered");
+  if (changes.length === 0) return;
+
+  await logSettingsChange({
+    category: "form_options",
+    summary: `${opts.listLabel}: ${changes.join(", ")}`.slice(0, 500),
     actorName: opts.actorName,
     actorEmail: opts.actorEmail,
   });

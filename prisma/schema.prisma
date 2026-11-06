@@ -175,3 +175,15 @@ model system_links {
   created_at  DateTime @default(now()) @db.DateTime(0)
   updated_at  DateTime @default(now()) @updatedAt @db.DateTime(0)
 }
+
+/// The ticket form's pick lists (location, department, request type), edited by admins in
+/// Settings → Form options. One row per entry; sort_order is the position within its list.
+model form_options {
+  id         Int      @id @default(autoincrement())
+  list_key   String   @db.VarChar(32)
+  label      String   @db.VarChar(150)
+  sort_order Int      @default(0)
+  created_at DateTime @default(now()) @db.DateTime(0)
+
+  @@unique([list_key, label], map: "list_label")
+}

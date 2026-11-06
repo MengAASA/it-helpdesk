@@ -10,6 +10,7 @@ import { TEAM_DOT } from "@/app/admin/teamStyle";
 import CopyButton from "@/app/tickets/[ticketNumber]/CopyButton";
 import StepIndicator from "../StepIndicator";
 import RocketLaunch, { type RocketOrigin } from "./RocketLaunch";
+import { DEFAULT_FORM_OPTIONS, type FormOptions } from "@/app/lib/formOptions";
 
 declare global {
   interface Window {
@@ -30,70 +31,6 @@ declare global {
 }
 
 const TURNSTILE_SCRIPT_SRC = "https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit";
-
-const LOCATIONS = [
-  "PHN Shah Alam",
-  "PHN Shah Alam 2",
-  "PHN Bukit Beruntung",
-  "PHN Pegoh",
-  "PHN Pekan",
-  "PHN Rasa",
-  "PHN Fif",
-  "DHMSB",
-  "OSI Shah Alam",
-  "OSI Tanjung Malim",
-];
-
-const DEPARTMENTS = [
-  "-",
-  "BUSINESS DEVELOPMENT",
-  "CEO OFFICE",
-  "COSTING AND COMMERCIAL",
-  "CULTURE AND TALENT MANAGEMENT",
-  "ENERGY MGMT AUTHORITY LIASON",
-  "ENERGY SOLUTION",
-  "ENGINEERING MANAGEMENT I",
-  "ENGINEERING MANAGEMENT II",
-  "EQUIPMENT MAINT I - SA 1, SA 2, DHMSB, PEGOH",
-  "EQUIPMENT MAINT II - BB, RASA, TM1, TM2",
-  "ESG HEALTH AND SAFETY",
-  "FACILITY AND ENERGY MANAGEMENT",
-  "FINANCE",
-  "INVENTORY MGMT AND PLANNING",
-  "IT AND DIGITALISATION",
-  "MANUFACTURING AND SCM - BB/RASA",
-  "MANUFACTURING AND SCM - PEGOH",
-  "MANUFACTURING AND SCM - PEKAN",
-  "MANUFACTURING AND SCM - SA1",
-  "MANUFACTURING AND SCM - SA 2",
-  "MANUFACTURING AND SCM - TM 1",
-  "MANUFACTURING AND SCM - TM 2",
-  "OPERATION I AND IMP",
-  "OPERATION II",
-  "OPERATION III",
-  "OPERATION IV",
-  "OPERATIONS",
-  "PROCESS ENGINEERING",
-  "PROCUREMENT & VENDOR DEV",
-  "PROGRAM MANAGEMENT",
-  "PROGRAM MANAGEMENT I",
-  "PROGRAM MANAGEMENT II",
-  "PROGRAM MANAGEMENT III",
-  "QMS & SQ",
-  "QUALITY ASSURANCE & CONTROL - BB, RASA, TM 1 AND TM 2",
-  "QUALITY ASSURANCE & CONTROL SA 1",
-  "QUALITY ASSURANCE & CONTROL SA 2",
-  "QUALITY ASSURANCE & CONTROL-DEV - MLK PKN",
-  "QUALITY DEVELOPMENT",
-  "QUALITY MANAGEMENT",
-  "QUALITY OPERATIONS",
-  "RESEARCH AND DEVELOPMENT",
-  "REWARDS AND ADMIN",
-  "STRATEGIC BUSINESS PERFORMANCE",
-  "TOOLING DESIGN AND DEVELOPMENT",
-];
-
-const USER_REQUEST_OPTIONS = ["Email - Active Directory", "BAAN Account"];
 
 const MAX_FILES = 2;
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -332,10 +269,13 @@ function TicketForm({
   initialName,
   initialEmail,
   initialStaffNo,
+  options,
 }: {
   initialName: string;
   initialEmail: string;
   initialStaffNo: string;
+  /** Location, department and request type choices, edited in Settings → Form options. */
+  options: FormOptions;
 }) {
   const searchParams = useSearchParams();
   const category = searchParams.get("category") ?? "";
@@ -572,7 +512,8 @@ function TicketForm({
       <div className="flex flex-col gap-[4px]">
         <h1 className="text-[22px] font-semibold tracking-[-0.02em] text-ink">Add your details</h1>
         <p className="max-w-[520px] text-[13px] leading-[20px] text-muted-2">
-          So the team can reach you and start on it straight away. Everything except attachments and request type is required.
+          So the team can reach you and start on it straight away. Everything except attachments
+          {options.request_type.length > 0 ? " and request type" : ""} is required.
         </p>
       </div>
 
@@ -603,10 +544,10 @@ function TicketForm({
           <Section title="Where you are" description="So the right people on site can help.">
             <div className="grid grid-cols-1 gap-[14px] @min-[520px]:grid-cols-2">
               <Field id="location" label="Location / Plant" error={errorFor("location")}>
-                <Dropdown id="location" placeholder="Select location" value={location} onChange={setLocation} options={LOCATIONS} invalid={!!errorFor("location")} />
+                <Dropdown id="location" placeholder="Select location" value={location} onChange={setLocation} options={options.location} invalid={!!errorFor("location")} />
               </Field>
               <Field id="department" label="Department" error={errorFor("department")}>
-                <Dropdown id="department" placeholder="Select department" value={department} onChange={setDepartment} options={DEPARTMENTS} invalid={!!errorFor("department")} />
+                <Dropdown id="department" placeholder="Select department" value={department} onChange={setDepartment} options={options.department} invalid={!!errorFor("department")} />
               </Field>
             </div>
           </Section>
@@ -625,32 +566,34 @@ function TicketForm({
                 className={fieldClass(!!errorFor("message"), true)}
               />
             </Field>
-            <div className="flex flex-col gap-[8px]">
-              <span className="text-[12px] font-medium text-muted">
-                Request type <span className="font-normal text-faint">· optional</span>
-              </span>
-              <div className="flex flex-wrap gap-[6px]">
-                {USER_REQUEST_OPTIONS.map((option) => {
-                  const on = userRequestTypes.includes(option);
-                  return (
-                    <button
-                      key={option}
-                      type="button"
-                      aria-pressed={on}
-                      onClick={() => toggleUserRequest(option)}
-                      className={`inline-flex h-[32px] items-center gap-[6px] rounded-[9px] border px-[12px] text-[13px] transition-[background-color,border-color,color,transform] duration-150 active:scale-[0.97] ${
-                        on ? "border-ink bg-ink text-paper" : "border-card-border bg-surface text-ink hover:border-primary/40 hover:bg-primary-soft hover:text-primary"
-                      }`}
-                    >
-                      <span className={`flex h-[14px] w-[14px] items-center justify-center rounded-[4px] border ${on ? "border-paper/40 bg-paper/15" : "border-field-border"}`}>
-                        {on && <Check size={10} strokeWidth={3} />}
-                      </span>
-                      {option}
-                    </button>
-                  );
-                })}
+            {options.request_type.length > 0 && (
+              <div className="flex flex-col gap-[8px]">
+                <span className="text-[12px] font-medium text-muted">
+                  Request type <span className="font-normal text-faint">· optional</span>
+                </span>
+                <div className="flex flex-wrap gap-[6px]">
+                  {options.request_type.map((option) => {
+                    const on = userRequestTypes.includes(option);
+                    return (
+                      <button
+                        key={option}
+                        type="button"
+                        aria-pressed={on}
+                        onClick={() => toggleUserRequest(option)}
+                        className={`inline-flex h-[32px] items-center gap-[6px] rounded-[9px] border px-[12px] text-[13px] transition-[background-color,border-color,color,transform] duration-150 active:scale-[0.97] ${
+                          on ? "border-ink bg-ink text-paper" : "border-card-border bg-surface text-ink hover:border-primary/40 hover:bg-primary-soft hover:text-primary"
+                        }`}
+                      >
+                        <span className={`flex h-[14px] w-[14px] items-center justify-center rounded-[4px] border ${on ? "border-paper/40 bg-paper/15" : "border-field-border"}`}>
+                          {on && <Check size={10} strokeWidth={3} />}
+                        </span>
+                        {option}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            )}
           </Section>
 
           <Section title="Attachments" description={`Optional. Up to ${MAX_FILES} files, 5MB each.`}>
@@ -918,10 +861,12 @@ export default function SubmitTicketForm({
   initialName = "",
   initialEmail = "",
   initialStaffNo = "",
+  options = DEFAULT_FORM_OPTIONS,
 }: {
   initialName?: string;
   initialEmail?: string;
   initialStaffNo?: string;
+  options?: FormOptions;
 }) {
   return (
     <Suspense fallback={null}>
@@ -929,6 +874,7 @@ export default function SubmitTicketForm({
         initialName={initialName}
         initialEmail={initialEmail}
         initialStaffNo={initialStaffNo}
+        options={options}
       />
     </Suspense>
   );

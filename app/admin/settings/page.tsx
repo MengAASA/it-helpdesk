@@ -5,11 +5,14 @@ import { getEmailSettings } from "@/app/lib/emailSettings";
 import { getSlaHours } from "@/app/lib/slaSettings";
 import { getCannedResponses } from "@/app/lib/cannedResponsesServer";
 import { getAllEmailTemplates } from "@/app/lib/emailTemplates";
+import { canManageFormOptions, getFormOptions } from "@/app/lib/formOptionsServer";
+import { LIST_META } from "@/app/lib/formOptions";
 import RestrictedMessage from "@/app/components/RestrictedMessage";
 import EmailSettingsForm from "./EmailSettingsForm";
 import SlaSettingsForm from "./SlaSettingsForm";
 import CannedResponsesManager from "./CannedResponsesManager";
 import EmailTemplatesManager from "./EmailTemplatesManager";
+import FormOptionsManager from "./FormOptionsManager";
 import SettingsTabs, { type SettingsTabKey, type TabSummary } from "./SettingsTabs";
 
 export const metadata: Metadata = {
@@ -32,8 +35,9 @@ export default async function AdminSettings() {
   const canEmail = permissions?.manageEmailSettings ?? false;
   const canSla = permissions?.manageSla ?? false;
   const canTemplates = permissions?.manageTemplates ?? false;
+  const canFormOptions = !!session && canManageFormOptions(session.role);
 
-  if (!canEmail && !canSla && !canTemplates) {
+  if (!canEmail && !canSla && !canTemplates && !canFormOptions) {
     return (
       <div className="flex flex-col gap-[16px]">
         <Header />
@@ -42,11 +46,12 @@ export default async function AdminSettings() {
     );
   }
 
-  const [settings, slaHours, cannedResponses, emailTemplates] = await Promise.all([
+  const [settings, slaHours, cannedResponses, emailTemplates, formOptions] = await Promise.all([
     canEmail ? getEmailSettings() : Promise.resolve(null),
     canSla ? getSlaHours() : Promise.resolve(null),
     canTemplates ? getCannedResponses() : Promise.resolve(null),
     canTemplates ? getAllEmailTemplates() : Promise.resolve(null),
+    canFormOptions ? getFormOptions() : Promise.resolve(null),
   ]);
 
   // Where each area stands right now, for its tab. Only for the areas this person can open.
@@ -82,6 +87,15 @@ export default async function AdminSettings() {
     };
   }
 
+  if (formOptions) {
+    const total = formOptions.location.length + formOptions.department.length + formOptions.request_type.length;
+    summaries.formOptions = {
+      state: String(total),
+      on: true,
+      detail: `${formOptions.department.length} ${LIST_META.department.label.toLowerCase()} · ${formOptions.location.length} ${LIST_META.location.label.toLowerCase()}`,
+    };
+  }
+
   return (
     <div className="flex flex-col gap-[16px]">
       <Header />
@@ -92,6 +106,7 @@ export default async function AdminSettings() {
         sla={slaHours && <SlaSettingsForm initialHours={slaHours} />}
         templates={cannedResponses && <CannedResponsesManager initialResponses={cannedResponses} />}
         emailTemplates={emailTemplates && <EmailTemplatesManager initialTemplates={emailTemplates} />}
+        formOptions={formOptions && <FormOptionsManager initialOptions={formOptions} />}
       />
     </div>
   );
